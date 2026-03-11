@@ -1,4 +1,4 @@
-import { generateText, tool } from "ai";
+import { generateText, tool, stepCountIs } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 
@@ -8,274 +8,139 @@ import { createCalendarEvent } from "@/tools/createCalendarEvent";
 import { sendEmail } from "@/tools/sendEmail";
 import { markEmailAsRead } from "@/tools/markEmailAsRead";
 
-export async function GET(req: Request) {
+export async function POST(req: Request) {
+    const body = await req.json();
 
-  const { searchParams } = new URL(req.url);
+    // messages is an array of { role: "user" | "assistant", content: string }
+    // sent from the client so the agent remembers prior turns
+    const messages: { role: "user" | "assistant"; content: string }[] =
+        body.messages || [];
 
-  const userPrompt =
-    searchParams.get("prompt") ||
-    "Check my unread emails";
+    const agentResult = await generateText({
+        model: openai.chat("gpt-4o-mini"),
 
-  const result = await generateText({
-    model: openai("gpt-4o-mini"),
+        system: `
+You are an autonomous AI scheduling assistant that manages emails and Google Calendar on behalf of the user.
 
-    system: `
-You are an AI scheduling assistant.
+TODAY'S DATE AND TIME: ${new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi" })} (PKT)
 
-Your job is to:
+## YOUR RESPONSIBILITIES
+You have access to real tools. You MUST call them to take action — never just describe what you would do.
 
-1. Check unread emails using the Gmail tool.
-2. Detect if any email contains a meeting request.
-3. A meeting request usually contains phrases like:
-   - "schedule a meeting"
-   - "let's meet"
-   - "call tomorrow"
-   - "meeting at"
-   - "available at"
+## WORKFLOW — follow this strictly:
 
-4. Ignore job alerts, marketing emails, promotions.
+### When the user asks to check emails or meeting requests:
+1. Call getUnreadEmails to fetch all unread emails.
+2. Identify any meeting request emails (look for keywords like "meet", "call", "schedule", "availability", "zoom", "google meet", time/date mentions).
+3. For each meeting request found, call getCalendarEvents to check if the requested time is free.
+4. If the slot is FREE → call createCalendarEvent to book it, then call sendEmail to confirm with the requester, then call markEmailAsRead.
+5. If the slot is BUSY → call sendEmail to politely decline or propose an alternative time, then call markEmailAsRead.
+6. Report clearly to the user what actions you took.
 
-5. If a meeting request exists:
-   - say which email contains it
-   - check the calendar using the calendar tool
+### When the user explicitly tells you to reply or respond to someone:
+1. You MUST call sendEmail immediately with the correct recipient, subject, and a well-written message based on the user's intent.
+2. Do NOT read emails again unless you genuinely need new information you don't already have.
+3. Use the conversation history to recall who the sender was, their email address, and the subject of the email.
 
-6. If no meeting requests exist:
-   - tell the user there are none.
+### General rules:
+- ALWAYS act — call the tools, do not just plan.
+- After sending an email, confirm clearly: "I've sent a reply to [name] at [email]."
+- After scheduling a meeting, confirm: "I've booked [title] on [date] at [time]."
+- If you lack information (e.g., the recipient's email address), ask the user.
+- Be concise and professional in every reply email you send.
 `,
 
-    tools: {
-      getUnreadEmails: tool({
-        description: "Fetch unread emails from Gmail",
-        inputSchema: z.object({}),
-        execute: async () => {
-          return await getUnreadEmails();
-        }
-      }),
+        messages,
 
-      getCalendarEvents: tool({
-        description: "Fetch calendar events",
-        inputSchema: z.object({}),
-        execute: async () => {
-          return await getCalendarEvents();
-        }
-      }),
-      createCalendarEvent: tool({
-        description: "Create a meeting event in Google Calendar",
-        inputSchema: z.object({
-          title: z.string(),
-          startTime: z.string(),
-          endTime: z.string()
-        }),
-        execute: async ({ title, startTime, endTime }) => {
-          return await createCalendarEvent(title, startTime, endTime);
-        }
-      }),
-      sendEmail: tool({
-        description: "Send a confirmation email replying to the meeting request",
-        inputSchema: z.object({
-          to: z.string(),
-          subject: z.string(),
-          message: z.string()
-        }),
-        execute: async ({ to, subject, message }) => {
-          return await sendEmail(to, subject, message);
-        }
-      }),
-      markEmailAsRead: tool({
-        description: "Mark a processed email as read so it isn't processed again",
-        inputSchema: z.object({
-          messageId: z.string()
-        }),
-        execute: async ({ messageId }) => {
-          return await markEmailAsRead(messageId);
-        }
-      })
-    },
+        tools: {
+            getUnreadEmails: tool({
+                description:
+                    "Fetch unread Gmail emails. Returns id, from (includes name and email address), subject, and snippet. Call this first to detect meeting requests.",
+                inputSchema: z.object({}),
+                execute: async () => getUnreadEmails(),
+            }),
 
-    prompt: userPrompt
-  });
+            getCalendarEvents: tool({
+                description:
+                    "Returns upcoming Google Calendar events. Call this to check if a requested meeting time is already booked.",
+                inputSchema: z.object({}),
+                execute: async () => getCalendarEvents(),
+            }),
 
-  let finalText = result.text;
+            createCalendarEvent: tool({
+                description:
+                    "Creates a new event in Google Calendar. Call this when a meeting request is detected and the time slot is available.",
+                inputSchema: z.object({
+                    title: z.string().describe("Title of the meeting"),
+                    startTime: z
+                        .string()
+                        .describe("Start time in ISO 8601 format, e.g. 2026-03-28T22:00:00+05:30"),
+                    endTime: z
+                        .string()
+                        .describe("End time in ISO 8601 format, e.g. 2026-03-28T23:00:00+05:30"),
+                }),
+                execute: async ({ title, startTime, endTime }) =>
+                    createCalendarEvent(title, startTime, endTime),
+            }),
 
-  let meetingContext: any = null;
+            sendEmail: tool({
+                description:
+                    "Send an email using Gmail. Use this to reply to meeting requests, confirm scheduled meetings, or decline conflicts.",
+                inputSchema: z.object({
+                    to: z
+                        .string()
+                        .describe("Recipient email address, e.g. farhan6902@icloud.com"),
+                    subject: z.string().describe("Email subject line"),
+                    message: z
+                        .string()
+                        .describe("Full body of the email in plain text"),
+                }),
+                execute: async ({ to, subject, message }) =>
+                    sendEmail(to, subject, message),
+            }),
 
-  if (!finalText && result.toolResults?.length) {
+            markEmailAsRead: tool({
+                description:
+                    "Mark a Gmail message as read after it has been processed. Use the message id returned by getUnreadEmails.",
+                inputSchema: z.object({
+                    messageId: z.string().describe("The Gmail message ID to mark as read"),
+                }),
+                execute: async ({ messageId }) => markEmailAsRead(messageId),
+            }),
+        },
 
-    const summary = await generateText({
-      model: openai("gpt-4o-mini"),
-      prompt: `
-These are unread emails:
-
-${JSON.stringify(result.toolResults?.[0]?.output)}
-
-Your job:
-
-1. Detect if any email contains a meeting request.
-2. Extract the meeting time and day.
-
-If a meeting request exists return JSON like:
-
-{
-  "meeting": true,
-  "title": "Meeting from email",
-  "time": "<time mentioned>",
-  "day": "<day mentioned>"
-}
-
-If none exist return:
-
-{
-  "meeting": false
-}
-`
+        toolChoice: "auto",
+        stopWhen: stepCountIs(10), // allow up to 10 tool-call steps per turn
     });
 
-    finalText = "";
+    let finalText = agentResult.text;
 
-    let meetingData;
+    // If the model only called tools and returned no text, summarise the tool results
+    if (!finalText && agentResult.toolResults?.length) {
+        const summary = await generateText({
+            model: openai.chat("gpt-4o-mini"),
+            prompt: `
+The AI agent completed the following actions:
 
-    try {
-      const clean = summary.text
-        .replace(/```json/g, "")
-        .replace(/```/g, "")
-        .trim();
+${JSON.stringify(agentResult.toolResults, null, 2)}
 
-      meetingData = JSON.parse(clean);
-    } catch {
-      meetingData = null;
-    }
-
-    if (meetingData?.meeting) {
-
-      const events = await getCalendarEvents();
-
-      let availability: { available: boolean } | undefined;
-
-      // If there are no events, the slot is automatically available
-      if (!events || events.length === 0) {
-        availability = { available: true };
-      } else {
-        const check = await generateText({
-          model: openai("gpt-4o-mini"),
-          prompt: `
-Existing calendar events:
-
-${JSON.stringify(events)}
-
-Requested meeting:
-${JSON.stringify(meetingData)}
-
-Check if the requested time conflicts with existing events.
-
-Return JSON:
-{
-  "available": true
-}
-
-or
-
-{
-  "available": false
-}
-`
+Write a clear, friendly summary for the user explaining exactly what was done.
+Mention names, email addresses, dates, and times where available.
+`,
         });
 
-        try {
-          const clean = check.text
-            .replace(/```json/g, "")
-            .replace(/```/g, "")
-            .trim();
-
-          availability = JSON.parse(clean);
-        } catch {
-          availability = { available: true };
-        }
-      }
-
-      if (availability?.available) {
-
-        // Convert natural language time into a real datetime
-        const now = new Date();
-
-        let meetingDate = new Date(now);
-
-        if (meetingData.day) {
-          let dayText = meetingData.day.toLowerCase();
-
-          if (dayText.includes("tomorrow")) {
-            meetingDate.setDate(now.getDate() + 1);
-          } else if (dayText.includes("today")) {
-            // keep today
-          } else {
-            // remove ordinal suffixes like 1st, 2nd, 3rd, 15th
-            dayText = dayText.replace(/(st|nd|rd|th)/g, "");
-
-            const parsed = new Date(`${dayText} ${now.getFullYear()}`);
-
-            if (!isNaN(parsed.getTime())) {
-              meetingDate = parsed;
-            }
-          }
-        }
-
-        // Parse time like "3 pm"
-        let hours = 15; // default 3 PM
-        let minutes = 0;
-
-        if (meetingData.time) {
-          const timeParsed = new Date(`1970-01-01 ${meetingData.time}`);
-
-          if (!isNaN(timeParsed.getTime())) {
-            hours = timeParsed.getHours();
-            minutes = timeParsed.getMinutes();
-          }
-        }
-
-        meetingDate.setHours(hours);
-        meetingDate.setMinutes(minutes);
-        meetingDate.setSeconds(0);
-
-        const startISO = meetingDate.toISOString();
-
-        // 30 minute meeting
-        const endDate = new Date(meetingDate.getTime() + 30 * 60000);
-        const endISO = endDate.toISOString();
-
-        await createCalendarEvent(
-          meetingData.title,
-          startISO,
-          endISO
-        );
-
-        const emailId = Array.isArray(result.toolResults?.[0]?.output)
-          ? (result.toolResults?.[0]?.output as any[])[0]?.id
-          : undefined;
-
-        if (emailId) {
-          await markEmailAsRead(emailId);
-        }
-
-        finalText = "Meeting scheduled successfully.";
-
-        meetingContext = {
-          title: meetingData.title || "Meeting from email",
-          day: meetingData.day || "today",
-          time: meetingData.time || "3 PM",
-          duration: "30 minutes"
-        };
-
-      } else {
-
-        finalText = "Requested meeting time conflicts with an existing calendar event.";
-
-      }
-    } else {
-      finalText = "No meeting requests were found in your unread emails.";
+        finalText = summary.text;
     }
-  }
 
-  return Response.json({
-    text: finalText || "I checked your unread emails but couldn't find any meeting requests.",
-    meeting: meetingContext
-  });
+    const toolsUsed = [
+        ...new Set(agentResult.toolCalls?.map((t: any) => t.toolName) ?? []),
+    ].join(", ");
+
+    return Response.json({
+        text:
+            (finalText || "Done. No actions were needed.") +
+            (toolsUsed ? `\n\nTools used: ${toolsUsed}` : ""),
+        toolCalls: agentResult.toolCalls,
+        toolResults: agentResult.toolResults,
+    });
 }
