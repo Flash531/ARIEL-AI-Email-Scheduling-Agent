@@ -2,6 +2,7 @@ import { generateText, tool, stepCountIs } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 
+import { requireAuth } from "@/lib/googleAuth";
 import { getUnreadEmails } from "@/tools/emailTool";
 import { getCalendarEvents } from "@/tools/calendarTool";
 import { createCalendarEvent } from "@/tools/createCalendarEvent";
@@ -11,6 +12,15 @@ import { markEmailAsRead } from "@/tools/markEmailAsRead";
 const TIMEZONE = "Asia/Kolkata"; // IST
 
 export async function POST(req: Request) {
+    // ── Auth gate ─────────────────────────────────────────────────────────
+    const isAuthenticated = await requireAuth();
+    if (!isAuthenticated) {
+        return Response.json(
+            { error: "unauthenticated", message: "Please sign in with Google to use Ariel." },
+            { status: 401 }
+        );
+    }
+
     const body = await req.json();
 
     const messages: { role: "user" | "assistant"; content: string }[] =

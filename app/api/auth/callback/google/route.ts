@@ -2,6 +2,8 @@ import { oauth2Client } from "@/lib/googleAuth";
 import { google } from "googleapis";
 import { NextResponse } from "next/server";
 
+const IS_PROD = process.env.NODE_ENV === "production";
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -24,9 +26,10 @@ export async function GET(req: Request) {
     const res = NextResponse.redirect(redirectUrl);
 
     // Store tokens in an httpOnly cookie (7-day expiry)
+    // secure: true in production (HTTPS only), false in dev (HTTP)
     res.cookies.set("g_tokens", JSON.stringify(tokens), {
       httpOnly: true,
-      secure: false,      // set to true in production (https)
+      secure: IS_PROD,
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7,
       path: "/",
@@ -42,7 +45,7 @@ export async function GET(req: Request) {
       }),
       {
         httpOnly: false,
-        secure: false,
+        secure: IS_PROD,
         sameSite: "lax",
         maxAge: 60 * 60 * 24 * 7,
         path: "/",

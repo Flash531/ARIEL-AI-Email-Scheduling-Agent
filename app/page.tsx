@@ -298,6 +298,15 @@ export default function Home() {
     const userText = (overrideText ?? prompt).trim();
     if (!userText || loading) return;
 
+    // Block if not signed in
+    if (!isSignedIn) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", text: "Please sign in with Google first — click the profile button in the top right." },
+      ]);
+      return;
+    }
+
     setMessages((prev) => [...prev, { role: "user", text: userText }]);
     setPrompt("");
     setLoading(true);
@@ -314,6 +323,19 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: updatedHistory }),
       });
+
+      // Auth gate — session may have expired
+      if (res.status === 401) {
+        setSession({ loggedIn: false });
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", text: "Your session has expired. Please sign in again using the profile button in the top right." },
+        ]);
+        setLoading(false);
+        setProcessingText("");
+        return;
+      }
+
       const data = await res.json();
       const assistantText = data.text || "No response.";
 
@@ -357,6 +379,7 @@ export default function Home() {
   };
 
   const isEmpty = messages.length === 0 && !loading;
+  const isSignedIn = session.loggedIn;
 
   return (
     <div style={S.root}>
@@ -367,7 +390,7 @@ export default function Home() {
           <ArielLogo />
           <div>
             <div style={S.navBrand}>Ariel</div>
-            <div style={S.navSubtitle}>AI Inbox Assistant</div>
+            <div style={S.navSubtitle} className="ariel-nav-subtitle">AI Inbox Assistant</div>
           </div>
         </div>
 
@@ -396,7 +419,8 @@ export default function Home() {
                 background: session.loggedIn ? "var(--green)" : "#ef4444",
               }} />
             </div>
-            {session.loggedIn ? "Connected to Gmail & Google Calendar" : "Not connected"}
+            <span className="ariel-badge-full">{session.loggedIn ? "Connected to Gmail & Google Calendar" : "Not connected"}</span>
+            <span className="ariel-badge-short">{session.loggedIn ? "Connected" : "Not connected"}</span>
           </div>
           <button style={S.iconBtn} aria-label="Settings">
             <SettingsIcon />
@@ -479,13 +503,13 @@ export default function Home() {
       </nav>
 
       {/* ── Body ───────────────────────────────────────────── */}
-      <div style={S.body}>
+      <div className="ariel-body">
 
         {/* ── Left Panel: Chat ───────────────────────────────── */}
-        <section style={S.leftPanel}>
+        <section className="ariel-left">
 
           {/* Chat feed */}
-          <div style={S.chatFeed}>
+          <div className="ariel-chat-feed" style={S.chatFeed}>
             {isEmpty && (
               <div style={S.emptyState}>
                 <div style={S.emptyIconWrap}>
@@ -497,20 +521,32 @@ export default function Home() {
                     : "Good evening"}
                 </h1>
                 <p style={S.emptySub}>
-                  Ask Ariel to manage your inbox, handle meeting requests, or check your calendar.
+                  {isSignedIn
+                    ? "Ask Ariel to manage your inbox, handle meeting requests, or check your calendar."
+                    : "Sign in with Google to let Ariel read your inbox and schedule meetings automatically."}
                 </p>
-                <div style={S.chipsGrid}>
-                  {CHIPS.map((c) => (
-                    <button
-                      key={c}
-                      className="card-hover"
-                      style={S.chip}
-                      onClick={() => runAgent(c)}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
+                {isSignedIn ? (
+                  <div style={S.chipsGrid}>
+                    {CHIPS.map((c) => (
+                      <button
+                        key={c}
+                        className="card-hover"
+                        style={S.chip}
+                        onClick={() => runAgent(c)}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <a
+                    href="/api/auth/login"
+                    style={S.signInCta}
+                  >
+                    <GoogleIcon />
+                    Sign in with Google
+                  </a>
+                )}
               </div>
             )}
 
@@ -554,9 +590,14 @@ export default function Home() {
             <div style={S.inputBox}>
               <textarea
                 ref={textareaRef}
-                style={S.textarea}
-                placeholder="Ask Ariel to manage your inbox…"
+                style={{
+                  ...S.textarea,
+                  opacity: isSignedIn ? 1 : 0.5,
+                  cursor: isSignedIn ? "text" : "not-allowed",
+                }}
+                placeholder={isSignedIn ? "Ask Ariel to manage your inbox…" : "Sign in with Google to start…"}
                 rows={1}
+                disabled={!isSignedIn || loading}
                 value={prompt}
                 onChange={(e) => {
                   setPrompt(e.target.value);
@@ -571,12 +612,12 @@ export default function Home() {
                 </button>
                 <button
                   onClick={() => runAgent()}
-                  disabled={!prompt.trim() || loading}
+                  disabled={!prompt.trim() || loading || !isSignedIn}
                   style={{
                     ...S.sendBtn,
-                    opacity: !prompt.trim() || loading ? 0.4 : 1,
-                    cursor: !prompt.trim() || loading ? "not-allowed" : "pointer",
-                    background: !prompt.trim() || loading ? "var(--surface-3)" : "var(--accent)",
+                    opacity: !prompt.trim() || loading || !isSignedIn ? 0.4 : 1,
+                    cursor: !prompt.trim() || loading || !isSignedIn ? "not-allowed" : "pointer",
+                    background: !prompt.trim() || loading || !isSignedIn ? "var(--surface-3)" : "var(--accent)",
                   }}
                   aria-label="Send"
                 >
@@ -584,14 +625,14 @@ export default function Home() {
                 </button>
               </div>
             </div>
-            <p style={S.inputHint}>
+            <p style={S.inputHint} className="ariel-input-hint">
               Press <kbd style={S.kbd}>Enter</kbd> to send · <kbd style={S.kbd}>Shift+Enter</kbd> for new line
             </p>
           </div>
         </section>
 
         {/* ── Right Panel: Agent Activity ────────────────────── */}
-        <aside style={S.rightPanel}>
+        <aside className="ariel-right">
 
           {/* Section: Agent Activity Timeline */}
           <div style={S.sectionCard}>
@@ -763,7 +804,7 @@ const S: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     height: "100dvh",
-    background: "var(--bg)",
+    background: "transparent",
     fontFamily: "var(--font-inter)",
     overflow: "hidden",
   },
@@ -777,8 +818,9 @@ const S: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     padding: "0 24px",
     borderBottom: "1px solid var(--border)",
-    background: "var(--bg)",
+    background: "var(--surface-2)",
     backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
     gap: 16,
     zIndex: 10,
   },
@@ -947,12 +989,13 @@ const S: Record<string, React.CSSProperties> = {
     padding: "8px 14px",
     borderRadius: 20,
     border: "1px solid var(--border-mid)",
-    background: "var(--surface)",
+    background: "var(--surface-2)",
     color: "var(--text-secondary)",
     fontSize: 12,
     fontFamily: "inherit",
     cursor: "pointer",
     letterSpacing: "-0.01em",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
   },
 
   /* Messages */
@@ -988,21 +1031,23 @@ const S: Record<string, React.CSSProperties> = {
     padding: "11px 16px",
     borderRadius: "16px 16px 4px 16px",
     background: "var(--accent)",
-    color: "rgba(255,255,255,0.95)",
+    color: "white",
     fontSize: 13.5,
     lineHeight: 1.65,
     letterSpacing: "-0.01em",
+    boxShadow: "0 4px 12px rgba(139, 92, 246, 0.2)",
   },
   aiBubble: {
     maxWidth: "72%",
     padding: "11px 16px",
     borderRadius: "4px 16px 16px 16px",
-    background: "var(--surface)",
+    background: "var(--surface-2)",
     border: "1px solid var(--border-mid)",
     color: "var(--text-primary)",
     fontSize: 13.5,
     lineHeight: 1.65,
     letterSpacing: "-0.01em",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.02)",
   },
 
   /* Typing dot */
@@ -1017,8 +1062,8 @@ const S: Record<string, React.CSSProperties> = {
   /* ── Input ── */
   inputArea: {
     padding: "14px 28px 18px",
-    borderTop: "1px solid var(--border-soft)",
-    background: "var(--bg)",
+    borderTop: "1px solid var(--border)",
+    background: "transparent",
     display: "flex",
     flexDirection: "column",
     gap: 8,
@@ -1027,11 +1072,14 @@ const S: Record<string, React.CSSProperties> = {
     display: "flex",
     alignItems: "flex-end",
     gap: 8,
-    background: "var(--surface)",
+    background: "var(--surface-2)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
     border: "1px solid var(--border-mid)",
     borderRadius: 14,
     padding: "10px 10px 10px 16px",
-    transition: "border-color 0.15s",
+    transition: "border-color 0.15s, box-shadow 0.15s",
+    boxShadow: "0 4px 24px rgba(0, 0, 0, 0.03)",
   },
   textarea: {
     flex: 1,
@@ -1103,7 +1151,9 @@ const S: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     gap: 0,
-    background: "var(--bg-2)",
+    background: "rgba(255, 255, 255, 0.4)",
+    backdropFilter: "blur(20px)",
+    WebkitBackdropFilter: "blur(20px)",
   },
   sectionCard: {
     padding: "20px 20px",
@@ -1202,14 +1252,15 @@ const S: Record<string, React.CSSProperties> = {
     gap: 8,
   },
   meetingCard: {
-    background: "var(--surface)",
-    border: "1px solid var(--border)",
+    background: "var(--surface-2)",
+    border: "1px solid var(--border-mid)",
     borderRadius: 10,
     padding: "12px 14px",
     display: "flex",
     flexDirection: "column",
     gap: 8,
     cursor: "default",
+    boxShadow: "0 2px 12px rgba(0,0,0,0.02)",
   },
   meetingTop: {
     display: "flex",
@@ -1290,6 +1341,7 @@ const S: Record<string, React.CSSProperties> = {
     cursor: "default",
     alignItems: "flex-start",
     border: "1px solid transparent",
+    transition: "background 0.15s",
   },
   emailAvatar: {
     width: 32,
@@ -1357,6 +1409,25 @@ const S: Record<string, React.CSSProperties> = {
   },
 
   /* ── Profile dropdown ── */
+  signInCta: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 8,
+    padding: "10px 20px",
+    background: "var(--surface-2)",
+    border: "1px solid var(--border-mid)",
+    borderRadius: 10,
+    fontSize: 13,
+    fontWeight: 600,
+    color: "var(--text-primary)",
+    cursor: "pointer",
+    textDecoration: "none",
+    transition: "background 0.15s, border-color 0.15s",
+    letterSpacing: "-0.01em",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.03)",
+  },
+
   profileDropdown: {
     position: "absolute" as const,
     top: "calc(100% + 8px)",

@@ -1,21 +1,20 @@
 import { NextResponse } from "next/server";
 
+const IS_PROD = process.env.NODE_ENV === "production";
+
 export async function GET() {
-  // Clear the session cookie
   const res = NextResponse.json({ success: true, message: "Logged out" });
-  res.cookies.set("g_tokens", "", {
+
+  const cookieBase = {
     httpOnly: true,
-    secure: false,
-    sameSite: "lax",
+    secure: IS_PROD,
+    sameSite: "lax" as const,
     maxAge: 0, // expires immediately
     path: "/",
-  });
-  res.cookies.set("g_profile", "", {
-    httpOnly: false,
-    secure: false,
-    sameSite: "lax",
-    maxAge: 0,
-    path: "/",
-  });
+  };
+
+  res.cookies.set("g_tokens", "", cookieBase);
+  res.cookies.set("g_profile", "", { ...cookieBase, httpOnly: false });
+
   return res;
 }
