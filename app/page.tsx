@@ -92,6 +92,34 @@ function StatCounter({ value, suffix, label }: { value: number; suffix: string; 
   );
 }
 
+/* ── Static badge stat (non-numeric) ────────────────────── */
+function StatBadge({ label, sublabel }: { label: string; sublabel: string }) {
+  return (
+    <div
+      className="lp-stat"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100%",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <span style={{
+          width: "8px", height: "8px",
+          borderRadius: "50%",
+          background: "#7c5cfc",
+          display: "inline-block",
+          animation: "pulse 2s infinite",
+        }} />
+        <span className="lp-stat-value" style={{ fontSize: "28px", fontWeight: 800 }}>{label}</span>
+      </div>
+      <span className="lp-stat-label" style={{ marginTop: "8px" }}>{sublabel}</span>
+    </div>
+  );
+}
+
 /* ── Section fade-in wrapper ─────────────────────────────── */
 function FadeIn({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
   const { ref, inView } = useInView();
@@ -132,47 +160,120 @@ function TestimonialCard({
 }
 
 /* ── Email waitlist form ─────────────────────────────────── */
+const LS_KEY = "ariel_waitlist_joined";
+
 function WaitlistForm({ id = "waitlist-form" }: { id?: string }) {
-  const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [email, setEmail]   = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [message, setMessage] = useState("");
   const [focused, setFocused] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Sync across all form instances in real-time via window event
+  useEffect(() => {
+    const syncState = () => {
+      try {
+        if (localStorage.getItem(LS_KEY) === "true") {
+          setStatus("success");
+          setMessage("You're on the list! Check your inbox.");
+        }
+      } catch { /* localStorage unavailable */ }
+    };
+
+    syncState(); // initial mount check
+    window.addEventListener(LS_KEY, syncState);
+    return () => window.removeEventListener(LS_KEY, syncState);
+  }, []);
+
+  const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
-    setSubmitted(true);
+    if (status === "loading" || !isValid) return;
+
+    setStatus("loading");
+    setMessage("");
+
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setStatus("success");
+        setMessage("You're on the list! Check your inbox.");
+        setEmail("");
+        try {
+          localStorage.setItem(LS_KEY, "true");
+          window.dispatchEvent(new Event(LS_KEY));
+        } catch { /* ignore */ }
+      } else {
+        setStatus("error");
+        setMessage(data.error || "Something went wrong. Please try again.");
+      }
+    } catch {
+      setStatus("error");
+      setMessage("Network error. Please try again.");
+    }
   };
 
-  if (submitted) {
+  // ── Success state ──────────────────────────────────────────
+  if (status === "success") {
     return (
       <div className="lp-success-pill">
         <span className="lp-success-icon"><CheckIcon /></span>
-        You&apos;re on the list. We&apos;ll be in touch soon.
+        {message}
       </div>
     );
   }
 
+  // ── Form (idle / loading / error) ─────────────────────────
   return (
-    <form id={id} className="lp-waitlist-form" onSubmit={handleSubmit}>
-      <div className={`lp-input-wrap ${focused ? "lp-input-focused" : ""}`}>
-        <input
-          type="email"
-          required
-          placeholder="Enter your work email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          className="lp-email-input"
-          aria-label="Email address"
-        />
+    <form id={id} className="lp-waitlist-form" onSubmit={handleSubmit}
+      style={{ flexDirection: "column", alignItems: "center", gap: 8 }}
+    >
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+        <div className={`lp-input-wrap ${focused ? "lp-input-focused" : ""}`}>
+          <input
+            type="email"
+            required
+            placeholder="Enter your work email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            className="lp-email-input"
+            aria-label="Email address"
+            disabled={status === "loading"}
+          />
+        </div>
+        <button
+          type="submit"
+          className="lp-btn-primary lp-btn-glow"
+          disabled={status === "loading" || !isValid}
+          style={{ opacity: (status === "loading" || !isValid) ? 0.65 : 1 }}
+        >
+          {status === "loading" ? "Joining…" : <>Join Waitlist <ArrowIcon /></>}
+        </button>
       </div>
-      <button type="submit" className="lp-btn-primary lp-btn-glow">
-        Join Waitlist <ArrowIcon />
-      </button>
+
+      {/* Error message */}
+      {status === "error" && (
+        <p style={{
+          fontSize: 13,
+          color: "#f87171",
+          margin: "4px 0 0",
+          textAlign: "center",
+        }}>
+          {message}
+        </p>
+      )}
     </form>
   );
 }
+
 
 /* ── How it works step ───────────────────────────────────── */
 function StepCard({
@@ -309,17 +410,19 @@ export default function LandingPage() {
 
           {/* Social trust */}
           <p className="lp-hero-trust lp-fade-hero lp-delay-4">
-            Joined by 1,200+ founders, operators, and executives
+            Joined by 100 founders, operators, and executives in our private pilot.
           </p>
 
-          {/* Stats */}
-          <div className="lp-stats-row lp-fade-hero lp-delay-4">
-            <StatCounter value={94} suffix="%" label="Emails handled automatically" />
-            <div className="lp-stat-divider" />
-            <StatCounter value={3} suffix="hrs" label="Saved per person, per week" />
-            <div className="lp-stat-divider" />
-            <StatCounter value={1200} suffix="+" label="Early access members" />
-          </div>
+         {/* Stats */}
+<div className="lp-stats-row lp-fade-hero lp-delay-4">
+  <StatBadge label="Early access" sublabel="82/100 slots filled" />
+  {/* <StatCounter value={100} suffix=" spots" label="Early access limit" /> */}
+  <div className="lp-stat-divider" />
+  <StatCounter value={11} suffix="hrs" label="Saved per week" />
+  <div className="lp-stat-divider" />
+  <StatBadge label="Beta" sublabel="Waitlist moving weekly" />
+</div>
+
 
           {/* Hero UI preview */}
           <div className="lp-hero-preview lp-fade-hero lp-delay-5">
@@ -388,7 +491,7 @@ export default function LandingPage() {
                 <div className="lp-problem-icon">📬</div>
                 <h3 className="lp-problem-title">It never stops growing</h3>
                 <p className="lp-problem-desc">
-                  You clear it. It refills. The average professional gets 121 emails a day and spends 28% of their workweek managing them.
+                  You clear it. It refills. The average professional gets <strong style={{ color: '#a5b4fc', fontWeight: 700 }}>121 emails a day</strong> and spends <strong style={{ color: '#a5b4fc', fontWeight: 700 }}>28% of their workweek</strong> managing them.
                 </p>
               </div>
             </FadeIn>
@@ -406,7 +509,7 @@ export default function LandingPage() {
                 <div className="lp-problem-icon">🔄</div>
                 <h3 className="lp-problem-title">Scheduling is a time tax</h3>
                 <p className="lp-problem-desc">
-                  4 emails to set up one call. Two time zones. One "does 3pm work?" thread that somehow takes all afternoon.
+                  <strong style={{ color: '#a5b4fc', fontWeight: 700 }}>4 emails</strong> to set up one call. Two time zones. One &ldquo;does 3pm work?&rdquo; thread that somehow takes all afternoon.
                 </p>
               </div>
             </FadeIn>
