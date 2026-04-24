@@ -72,9 +72,3 @@ Full Stack Engineer (MERN) | AI Agents & Automation Systems
 
 📧 Contact: farhan6902@icloud.com￼
 
-⸻
-
-If you want, I can next:
-
-* make this README more YC-level polished
-* or align it with your GitHub social preview for a full product branding system
