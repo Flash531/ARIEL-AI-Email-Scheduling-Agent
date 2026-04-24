@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useAppStore } from "@/lib/store";
+import type { ArielEmail } from "@/lib/store";
 
 /* ── Types ─────────────────────────────────────────────── */
 type EmailItem = {
@@ -354,11 +355,29 @@ function IconMeetingsLg() {
 /* ── PAGE ───────────────────────────────────────────────── */
 export default function InboxPage() {
   const [session, setSession] = useState<{ loggedIn: boolean }>({ loggedIn: false });
-  const [emails] = useState<EmailItem[]>([]);
+  const arielEmails = useAppStore((s) => s.arielEmails);
 
   useEffect(() => {
     fetch("/api/auth/session").then((r) => r.json()).then(setSession).catch(() => {});
   }, []);
+
+  // Map ArielEmail → EmailItem expected by InboxMain
+  const emails: EmailItem[] = arielEmails.map((e: ArielEmail) => ({
+    id: parseInt(e.id) || 0,
+    sender: e.from,
+    initials: e.from
+      .split(" ")
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase() ?? "")
+      .join(""),
+    subject: e.subject,
+    snippet: e.summary,
+    time: new Date(e.timestamp).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+    tag: e.priority === "urgent" ? "urgent" : e.priority === "low" ? "handled" : "pending",
+  }));
 
   return (
     <>

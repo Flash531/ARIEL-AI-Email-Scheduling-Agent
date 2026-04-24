@@ -67,13 +67,16 @@ function LeftSidebar({
   const active = usePathname();
   return (
     <aside className="d-sidebar">
-      <div className="d-sb-logo">
+      <a href="/" className="d-sb-logo" style={{ textDecoration: "none", cursor: "pointer" }}
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.8")}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+      >
         <ArielLogo size={30} />
         <div>
           <div className="d-sb-brand">Ariel</div>
           <div className="d-sb-sub">AI Inbox Assistant</div>
         </div>
-      </div>
+      </a>
       <nav className="d-sb-nav">
         {NAV_ITEMS.map((item, index) => (
           <a key={item.label} href={item.href}

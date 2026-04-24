@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { useAppStore } from "@/lib/store";
+import type { ArielMeeting } from "@/lib/store";
 
 /* ── Types ─────────────────────────────────────────────── */
 type MeetingItem = {
@@ -349,16 +350,21 @@ function MeetingsMain({ meetings }: { meetings: MeetingItem[] }) {
 
 /* ── PAGE ───────────────────────────────────────────────── */
 export default function MeetingsPage() {
-  const storeMeetings = useAppStore((s) => s.meetings);
-  const meetings = storeMeetings.map((m) => ({
-    id: m.id,
+  const arielMeetings = useAppStore((s) => s.arielMeetings);
+
+  const meetings: MeetingItem[] = arielMeetings.map((m: ArielMeeting) => ({
+    id: parseInt(m.id) || 0,
     title: m.title,
-    attendee: m.attendee,
-    initials: m.attendee.split(" ").map((n: string) => n[0]).join(""),
-    date: m.date,
-    time: m.time,
+    attendee: m.contactName,
+    initials: m.contactName
+      .split(" ")
+      .slice(0, 2)
+      .map((w: string) => w[0]?.toUpperCase() ?? "")
+      .join(""),
+    date: m.dateTime === "TBD" ? "" : m.dateTime.split(" ")[0] ?? "",
+    time: m.dateTime === "TBD" ? "TBD" : m.dateTime.split(" ").slice(1).join(" ") || "",
     duration: m.duration,
-  })) as MeetingItem[];
+  }));
 
   return (
     <>

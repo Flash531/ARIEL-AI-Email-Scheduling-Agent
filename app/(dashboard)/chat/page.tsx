@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
-import type { AgentStep, MeetingCard, EmailCard, Message } from "@/lib/store";
+import type { AgentStep, MeetingCard, EmailCard, Message, ArielEmail, ArielMeeting } from "@/lib/store";
 
 /* ── Local types (not in store) ───────────────────────────── */
 type Role = "user" | "assistant";
@@ -565,6 +565,8 @@ export default function ChatPage() {
   const storeMeetings     = useAppStore((s) => s.setMeetings);
   const emails            = useAppStore((s) => s.emails);
   const storeEmails       = useAppStore((s) => s.setEmails);
+  const setArielEmails    = useAppStore((s) => s.setArielEmails);
+  const setArielMeetings  = useAppStore((s) => s.setArielMeetings);
 
   const historyRef = useRef<ApiMessage[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -638,13 +640,58 @@ export default function ChatPage() {
       historyRef.current = [...updatedHistory, { role: "assistant", content: assistantText }];
       setActivityItems(buildStepsFromToolCalls(data.toolCalls ?? []));
 
-      if (data.emails?.length > 0) storeEmails(data.emails);
+      if (data.emails?.length > 0) {
+        storeEmails(data.emails);
+
+        // Transform to ArielEmail format for the Inbox page
+        const arielEmails: ArielEmail[] = (data.emails as EmailCard[]).map((e) => ({
+          id: String(e.id),
+          from: e.sender,
+          subject: e.subject,
+          summary: e.snippet,
+          priority: e.tag === "Meeting Request" ? "urgent" : "normal",
+          timestamp: new Date().toISOString(),
+          isRead: false,
+        }));
+        setArielEmails(arielEmails);
+
+        // Derive ArielMeetings from emails with meeting-related keywords
+        // (supplements any calendar events actually created by the agent)
+        const MEETING_KW = /meeting|call|zoom|schedule|google meet|sync|invite|appointment/i;
+        const derivedMeetings: ArielMeeting[] = arielEmails
+          .filter((e) => MEETING_KW.test(e.subject + " " + e.summary))
+          .map((e) => ({
+            id: e.id,
+            title: e.subject,
+            contactName: e.from,
+            dateTime: "TBD",
+            duration: "30 min",
+          }));
+        setArielMeetings(derivedMeetings);
+      }
+
       if (data.meetings?.length > 0) {
         const merged = [
           ...data.meetings,
           ...meetings.filter((m: MeetingCard) => !data.meetings.find((n: MeetingCard) => n.title === m.title)),
         ];
         storeMeetings(merged);
+
+        // Also add confirmed (calendar-created) meetings to ArielMeetings
+        const confirmedMeetings: ArielMeeting[] = (data.meetings as MeetingCard[]).map((m) => ({
+          id: String(m.id),
+          title: m.title,
+          contactName: m.attendee,
+          dateTime: m.date && m.time ? `${m.date} ${m.time}` : "TBD",
+          duration: m.duration || "30 min",
+        }));
+        // Merge with derived (avoid duplicates by title)
+        const existing = useAppStore.getState().arielMeetings;
+        const merged2: ArielMeeting[] = [
+          ...confirmedMeetings,
+          ...existing.filter((e) => !confirmedMeetings.find((c) => c.title === e.title)),
+        ];
+        setArielMeetings(merged2);
       }
       addMessage({ role: "assistant", text: assistantText });
 

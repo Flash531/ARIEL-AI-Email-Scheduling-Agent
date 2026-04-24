@@ -3,34 +3,39 @@ import { persist } from "zustand/middleware";
 
 /* ── Shared types ─────────────────────────────────────────── */
 export type Role = "user" | "assistant";
-
 export type Message = { role: Role; text: string };
-
 export type AgentStep = {
   id: number;
   label: string;
   status: "done" | "active" | "pending";
 };
-
 export type MeetingCard = {
-  id: number;
-  title: string;
-  date: string;
-  time: string;
-  duration: string;
-  attendee: string;
-  platform: string;
+  id: number; title: string; date: string;
+  time: string; duration: string; attendee: string; platform: string;
+};
+export type EmailCard = {
+  id: number; sender: string; initials: string;
+  subject: string; snippet: string; time: string; tag: string;
 };
 
-export type EmailCard = {
-  id: number;
-  sender: string;
-  initials: string;
+/* ── Inbox / Meetings canonical types ─────────────────────── */
+export interface ArielEmail {
+  id: string;
+  from: string;
   subject: string;
-  snippet: string;
-  time: string;
-  tag: string;
-};
+  summary: string;
+  priority: "urgent" | "normal" | "low";
+  timestamp: string;
+  isRead: boolean;
+}
+
+export interface ArielMeeting {
+  id: string;
+  title: string;
+  contactName: string;
+  dateTime: string;
+  duration: string;
+}
 
 /* ── Store shape ──────────────────────────────────────────── */
 interface AppState {
@@ -40,8 +45,9 @@ interface AppState {
   emails: EmailCard[];
   scheduledMeetingsCount: number;
   emailSummaryCount: number;
+  arielEmails: ArielEmail[];
+  arielMeetings: ArielMeeting[];
 
-  /* Actions */
   addMessage: (msg: Message) => void;
   setActivityItems: (items: AgentStep[]) => void;
   setMeetings: (items: MeetingCard[]) => void;
@@ -49,6 +55,8 @@ interface AppState {
   clearMessages: () => void;
   setMeetingsCount: (n: number) => void;
   setEmailCount: (n: number) => void;
+  setArielEmails: (emails: ArielEmail[]) => void;
+  setArielMeetings: (meetings: ArielMeeting[]) => void;
 }
 
 /* ── Store ────────────────────────────────────────────────── */
@@ -61,6 +69,8 @@ export const useAppStore = create<AppState>()(
       emails: [],
       scheduledMeetingsCount: 0,
       emailSummaryCount: 0,
+      arielEmails: [],
+      arielMeetings: [],
 
       addMessage: (msg) =>
         set((s) => ({ messages: [...s.messages, msg] })),
@@ -79,6 +89,12 @@ export const useAppStore = create<AppState>()(
 
       setMeetingsCount: (n) => set({ scheduledMeetingsCount: n }),
       setEmailCount: (n)    => set({ emailSummaryCount: n }),
+
+      setArielEmails: (emails) =>
+        set({ arielEmails: emails, emailSummaryCount: emails.length }),
+
+      setArielMeetings: (meetings) =>
+        set({ arielMeetings: meetings, scheduledMeetingsCount: meetings.length }),
     }),
     { name: "ariel-app-state" }
   )
