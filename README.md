@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+ARIEL — AI Email Scheduling Agent
 
-## Getting Started
+ARIEL is an AI-powered email automation system that reads Gmail messages, extracts scheduling intent, and automatically creates events in Google Calendar.
 
-First, run the development server:
+It acts as a bridge between your inbox and your calendar — turning emails into scheduled actions with minimal user effort.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+⸻
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+✨ Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+* 📩 Gmail Integration — Reads and processes incoming emails using OAuth
+* 🧠 AI Intent Extraction — Understands meeting requests and scheduling context using OpenAI
+* 📅 Google Calendar Automation — Automatically creates calendar events from email content
+* 🔐 Secure OAuth Flow — Safe authentication with Google services
+* ⚙️ Tool-Based AI Agent — Modular AI system for orchestration and decision-making
+* 🌐 SaaS-style UI — Clean interface built with Next.js + TailwindCSS
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+⸻
 
-## Learn More
+🧠 How It Works
 
-To learn more about Next.js, take a look at the following resources:
+1. User connects Gmail and Google Calendar via OAuth
+2. ARIEL scans incoming emails
+3. AI extracts intent (meeting time, participants, context)
+4. System checks calendar availability
+5. Event is created automatically in Google Calendar
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+⸻
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+🛠️ Tech Stack
 
-## Deploy on Vercel
+* Frontend: Next.js, React, TailwindCSS
+* Backend: Node.js, Express
+* AI Layer: OpenAI (tool-based agent orchestration)
+* APIs: Gmail API, Google Calendar API, OAuth 2.0
+* Deployment: Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+⸻
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+📦 Architecture
+
+Email → Gmail API → AI Agent (OpenAI) → Intent Parsing → Calendar API → Event Creation
+
+⸻
+
+🌐 Live Demo
+
+🔗 https://ariel-agent.vercel.app/
+
+🚀 Highlights
+
+* Real-world automation of inbox workflows
+* Reduces manual scheduling effort
+* Designed as a scalable AI SaaS system
+* Built with production-ready architecture patterns
+
+⸻
+
+📌 Future Improvements
+
+* Multi-language email understanding
+* Smart rescheduling suggestions
+* Slack / WhatsApp integration
+* Team scheduling support
+
+⸻
+
+👤 Author
+
+Mohd Farhan
+Full Stack Engineer (MERN) | AI Agents & Automation Systems
+
+📧 Contact: farhan6902@icloud.com￼
+
+⸻
+
+If you want, I can next:
+
+* make this README more YC-level polished
+* or align it with your GitHub social preview for a full product branding system
