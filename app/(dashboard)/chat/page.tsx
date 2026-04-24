@@ -8,6 +8,13 @@ import type { AgentStep, MeetingCard, EmailCard, Message, ArielEmail, ArielMeeti
 type Role = "user" | "assistant";
 type ApiMessage = { role: Role; content: string };
 
+type PendingEmail = {
+  to: string;
+  subject: string;
+  message: string;
+  inReplyTo?: string;
+};
+
 /* ── Tool labels ──────────────────────────────────────────── */
 const TOOL_LABELS: Record<string, string> = {
   getUnreadEmails: "Reading Gmail inbox",
@@ -260,6 +267,9 @@ function ChatArea({
   textareaRef,
   bottomRef,
   onClear,
+  pendingEmail,
+  onConfirmEmail,
+  onCancelEmail,
 }: {
   messages: Message[];
   loading: boolean;
@@ -273,6 +283,9 @@ function ChatArea({
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   bottomRef: React.RefObject<HTMLDivElement | null>;
   onClear: () => void;
+  pendingEmail: PendingEmail | null;
+  onConfirmEmail: () => void;
+  onCancelEmail: () => void;
 }) {
   const hour = new Date().getHours();
   const tod = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
@@ -355,6 +368,20 @@ function ChatArea({
           </div>
         ))}
 
+        {/* Email confirmation banner — shown before any email is sent */}
+        {pendingEmail && (
+          <div className="d-msg-row d-msg-ai" style={{ flexDirection: "column", alignItems: "flex-start", gap: 0 }}>
+            <div className="d-ai-avatar" style={{ marginBottom: 4 }}><ArielLogo size={24} /></div>
+            <div style={{ width: "100%", maxWidth: 520 }}>
+              <EmailConfirmBanner
+                pending={pendingEmail}
+                onConfirm={onConfirmEmail}
+                onCancel={onCancelEmail}
+              />
+            </div>
+          </div>
+        )}
+
         {loading && (
           <div className="d-msg-row d-msg-ai">
             <div className="d-ai-avatar"><ArielLogo size={24} /></div>
@@ -398,6 +425,113 @@ function ChatArea({
         )}
       </div>
     </main>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   EMAIL CONFIRMATION BANNER
+═══════════════════════════════════════════════════════════ */
+function EmailConfirmBanner({
+  pending,
+  onConfirm,
+  onCancel,
+}: {
+  pending: PendingEmail;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div style={{
+      margin: "12px 0",
+      borderRadius: 12,
+      border: "1px solid rgba(99,102,241,0.45)",
+      background: "rgba(99,102,241,0.08)",
+      overflow: "hidden",
+    }}>
+      {/* Header */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8,
+        padding: "10px 16px",
+        background: "rgba(99,102,241,0.15)",
+        borderBottom: "1px solid rgba(99,102,241,0.2)",
+      }}>
+        <span style={{ fontSize: 15 }}>✉️</span>
+        <span style={{ fontWeight: 600, fontSize: 13, color: "#c7d2fe" }}>Email Preview — Awaiting Confirmation</span>
+      </div>
+
+      {/* Body */}
+      <div style={{ padding: "12px 16px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+            <span style={{ color: "rgba(255,255,255,0.6)", fontWeight: 600 }}>To: </span>
+            <span style={{ color: "#a5b4fc" }}>{pending.to}</span>
+          </div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+            <span style={{ color: "rgba(255,255,255,0.6)", fontWeight: 600 }}>Subject: </span>
+            <span style={{ color: "rgba(255,255,255,0.8)" }}>{pending.subject}</span>
+          </div>
+        </div>
+        <div style={{
+          background: "rgba(0,0,0,0.25)",
+          borderRadius: 8,
+          padding: "10px 12px",
+          fontSize: 12,
+          color: "rgba(255,255,255,0.7)",
+          whiteSpace: "pre-wrap",
+          maxHeight: 160,
+          overflowY: "auto",
+          lineHeight: 1.6,
+          marginBottom: 12,
+        }}>
+          {pending.message}
+        </div>
+
+        {/* Action buttons */}
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            id="email-confirm-send-btn"
+            onClick={onConfirm}
+            style={{
+              flex: 1,
+              padding: "8px 14px",
+              borderRadius: 8,
+              border: "none",
+              background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              transition: "opacity 0.15s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.85"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
+          >
+            ✓ Send Email
+          </button>
+          <button
+            id="email-confirm-cancel-btn"
+            onClick={onCancel}
+            style={{
+              padding: "8px 14px",
+              borderRadius: 8,
+              border: "1px solid rgba(255,255,255,0.15)",
+              background: "rgba(255,255,255,0.05)",
+              color: "rgba(255,255,255,0.6)",
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              transition: "all 0.15s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#fff"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "rgba(255,255,255,0.6)"; }}
+          >
+            ✕ Cancel
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -550,6 +684,7 @@ export default function ChatPage() {
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [processingText, setProcessingText] = useState("");
+  const [pendingEmail, setPendingEmail] = useState<PendingEmail | null>(null);
   const [session, setSession] = useState<{
     loggedIn: boolean;
     profile?: { name?: string; email?: string; picture?: string } | null;
@@ -604,6 +739,36 @@ export default function ChatPage() {
 
   const isSignedIn = session.loggedIn;
 
+  // ── Email confirmation handlers ──────────────────────────────────────
+  const handleConfirmEmail = async () => {
+    if (!pendingEmail) return;
+    const payload = pendingEmail;
+    setPendingEmail(null);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: historyRef.current,
+          confirmedEmailPayload: payload,
+        }),
+      });
+      const data = await res.json();
+      const assistantText = (data.text || "Email sent.").replace(/\n\n_Tools used:[\s\S]*$/, "").trim();
+      historyRef.current = [...historyRef.current, { role: "assistant", content: assistantText }];
+      addMessage({ role: "assistant", text: assistantText });
+    } catch {
+      addMessage({ role: "assistant", text: "Failed to send the email. Please try again." });
+    }
+    setLoading(false);
+  };
+
+  const handleCancelEmail = () => {
+    setPendingEmail(null);
+    addMessage({ role: "assistant", text: "Got it — I've cancelled the email. No message was sent." });
+  };
+
   const runAgent = async (overrideText?: string) => {
     const userText = (overrideText ?? prompt).trim();
     if (!userText || loading) return;
@@ -639,6 +804,11 @@ export default function ChatPage() {
 
       historyRef.current = [...updatedHistory, { role: "assistant", content: assistantText }];
       setActivityItems(buildStepsFromToolCalls(data.toolCalls ?? []));
+
+      // Show confirmation banner if agent queued an email preview
+      if (data.pendingEmailConfirmation) {
+        setPendingEmail(data.pendingEmailConfirmation as PendingEmail);
+      }
 
       if (data.emails?.length > 0) {
         storeEmails(data.emails);
@@ -730,6 +900,9 @@ export default function ChatPage() {
         textareaRef={textareaRef}
         bottomRef={bottomRef}
         onClear={clearMessages}
+        pendingEmail={pendingEmail}
+        onConfirmEmail={handleConfirmEmail}
+        onCancelEmail={handleCancelEmail}
       />
       <RightPanel
         steps={activityItems}

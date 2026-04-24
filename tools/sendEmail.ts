@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import { oauth2Client, loadTokensFromCookie } from "@/lib/googleAuth";
+import { isValidRecipient } from "@/tools/emailSafetyUtils";
 
 // User's local timezone — update this if you're in a different zone
 const USER_TIMEZONE = "Asia/Kolkata"; // IST = UTC+5:30
@@ -11,6 +12,20 @@ export async function sendEmail(
   /** Optional: original Message-ID header for threading replies */
   inReplyTo?: string
 ) {
+  // ── HARD SAFETY GATE ────────────────────────────────────────────────────
+  // Last-line-of-defence: block automated / noreply addresses even if the
+  // upstream caller (agent route) somehow missed the gate check.
+  if (!isValidRecipient(to)) {
+    return {
+      status: "blocked",
+      reason:
+        "Recipient address appears to be automated (noreply/alert/etc.). Email was NOT sent.",
+      to,
+      subject,
+    };
+  }
+  // ────────────────────────────────────────────────────────────────────────
+
   await loadTokensFromCookie();
   const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
