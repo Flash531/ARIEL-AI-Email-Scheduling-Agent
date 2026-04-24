@@ -5,12 +5,12 @@ import "./globals.css";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
-  weight: ["300", "400", "500", "600"],
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
-  title: "Ariel — AI Inbox Assistant",
-  description: "Ariel is your AI agent that reads Gmail, detects meeting requests, and schedules meetings automatically.",
+  title: "Ariel — Your Inbox, Finally Under Control",
+  description: "Ariel reads your emails, understands context, and executes tasks like scheduling meetings automatically. Join the waitlist.",
 };
 
 export default function RootLayout({

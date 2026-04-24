@@ -1,6 +1,7 @@
 import { generateText, tool, stepCountIs } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
+import { cookies } from "next/headers";
 
 import { requireAuth } from "@/lib/googleAuth";
 import { getUnreadEmails } from "@/tools/emailTool";
@@ -9,7 +10,12 @@ import { createCalendarEvent } from "@/tools/createCalendarEvent";
 import { sendEmail } from "@/tools/sendEmail";
 import { markEmailAsRead } from "@/tools/markEmailAsRead";
 
-const TIMEZONE = "Asia/Kolkata"; // IST
+const SETTING_DEFAULTS = {
+    userName: "Muhammad",
+    timezone: "Asia/Kolkata",
+    model: "gpt-4o-mini",
+    emailSignature: "Ariel (Muhammad's AI assistant)",
+};
 
 export async function POST(req: Request) {
     // ── Auth gate ─────────────────────────────────────────────────────────
@@ -21,6 +27,12 @@ export async function POST(req: Request) {
         );
     }
 
+    // ── Load user settings from cookie ────────────────────────────────────
+    const cookieStore = await cookies();
+    const settingsRaw = cookieStore.get("ariel_settings")?.value;
+    const userSettings = settingsRaw ? { ...SETTING_DEFAULTS, ...JSON.parse(settingsRaw) } : SETTING_DEFAULTS;
+    const { userName, timezone, model, emailSignature } = userSettings;
+
     const body = await req.json();
 
     const messages: { role: "user" | "assistant"; content: string }[] =
@@ -28,7 +40,7 @@ export async function POST(req: Request) {
 
     const now = new Date();
     const localTime = now.toLocaleString("en-US", {
-        timeZone: TIMEZONE,
+        timeZone: timezone,
         weekday: "long",
         year: "numeric",
         month: "long",
@@ -45,19 +57,20 @@ export async function POST(req: Request) {
     const meetingCapture: any[] = [];
 
     const agentResult = await generateText({
-        model: openai.chat("gpt-4o-mini"),
+        model: openai.chat(model as "gpt-4o-mini" | "gpt-4o"),
 
         system: `
-You are Aria, an autonomous AI scheduling assistant for Muhammad.
-You manage his Gmail inbox and Google Calendar, taking real actions via tools.
+You are Ariel, an autonomous AI scheduling assistant for ${userName}.
+You manage their Gmail inbox and Google Calendar, taking real actions via tools.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CONTEXT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-• Current date/time : ${localTime} (IST, Asia/Kolkata, UTC+5:30)
-• User name         : Muhammad
-• User timezone     : Asia/Kolkata (IST, UTC+5:30)
-• All calendar times are in IST. When creating events, always pass ISO 8601 times with the +05:30 offset.
+• Current date/time : ${localTime} (${timezone})
+• User name         : ${userName}
+• User timezone     : ${timezone}
+• Email signature   : ${emailSignature}
+• All calendar times must be ISO 8601 with the correct UTC offset for ${timezone}.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TOOLS AND WHEN TO USE THEM
@@ -76,7 +89,7 @@ createCalendarEvent   → Call this when a time slot is confirmed free.
 
 sendEmail             → Call this to send or reply to emails.
                         Always populate inReplyTo with the original messageId when replying.
-                        Write warm, professional emails. Sign off as "Aria (Muhammad's AI assistant)".
+                        Write warm, professional emails. Sign off as "Ariel (Muhammad's AI assistant)".
 
 markEmailAsRead       → Call this after processing any email (meeting or not).
 
@@ -172,7 +185,7 @@ STRICT RULES
                     message: z
                         .string()
                         .describe(
-                            "Full email body in plain text. Be warm and professional. Sign off as: 'Aria (Muhammad\\'s AI assistant)'."
+                            "Full email body in plain text. Be warm and professional. Sign off as: 'Ariel (Muhammad\\'s AI assistant)'."
                         ),
                     inReplyTo: z
                         .string()
@@ -228,8 +241,6 @@ STRICT RULES
         if (summaryParts.length) finalText = summaryParts.join(" ");
     }
 
-    const toolsUsed = [...new Set(allToolCalls.map((t) => t.toolName))].join(", ");
-
     // ── Shape emails for the frontend ─────────────────────────────────────
     const emailCards = capturedEmails.slice(0, 10).map((email: any, i: number) => {
         const name: string = email.fromName || email.fromEmail || "Unknown";
@@ -250,23 +261,33 @@ STRICT RULES
     });
 
     // ── Shape meetings for the frontend ───────────────────────────────────
+    // Build email → display name map from captured emails for richer attendee labels
+    const emailToName: Record<string, string> = {};
+    for (const em of capturedEmails) {
+        if (em.fromEmail) emailToName[em.fromEmail.toLowerCase()] = em.fromName || em.fromEmail;
+    }
+
     const meetingCards = capturedMeetings.map((ev: any, i: number) => {
         const start = ev.start ? new Date(ev.start) : null;
         const end   = ev.end   ? new Date(ev.end)   : null;
         const durationMin = (start && end) ? Math.round((end.getTime() - start.getTime()) / 60000) : 0;
+        const attendeeEmail: string = ev.attendeeEmail ?? "";
+        const attendeeName = attendeeEmail
+            ? (emailToName[attendeeEmail.toLowerCase()] || attendeeEmail)
+            : "";
         return {
             id: i + 1,
             title: ev.title,
             date: start ? start.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "",
             time: start ? start.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "",
             duration: durationMin ? `${durationMin} min` : "",
-            attendee: ev.attendeeEmail ?? "",
+            attendee: attendeeName,
             platform: "Google Meet",
         };
     });
 
     return Response.json({
-        text: (finalText || "Done — no actions needed.") + (toolsUsed ? `\n\n_Tools used: ${toolsUsed}_` : ""),
+        text: finalText || "Done — no actions needed.",
         toolCalls: allToolCalls,
         emails: emailCards,
         meetings: meetingCards,
