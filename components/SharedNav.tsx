@@ -49,7 +49,7 @@ function SignOutIcon() {
 }
 
 const NAV_LINKS = [
-  { href: "/", label: "Chat" },
+  { href: "/chat", label: "Chat" },
   { href: "/settings", label: "Settings" },
 ];
 
@@ -93,7 +93,7 @@ export default function SharedNav() {
     <nav style={{
       height: 56, flexShrink: 0, display: "flex", alignItems: "center",
       justifyContent: "space-between", padding: "0 24px",
-      borderBottom: "1px solid var(--border)", background: "var(--surface-2)",
+      borderBottom: "1px solid rgba(255,255,255,0.07)", background: "#0d1020",
       backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", gap: 16, zIndex: 10,
     }}>
       {/* Left */}
@@ -113,11 +113,13 @@ export default function SharedNav() {
           const active = pathname === link.href;
           return (
             <Link key={link.href} href={link.href} style={{
-              padding: "5px 13px", borderRadius: 20, fontSize: 12.5,
+              padding: active ? "4px 12px" : "5px 13px",
+              borderRadius: active ? 6 : 20,
+              fontSize: 12.5,
               fontWeight: active ? 600 : 500,
-              color: active ? "var(--accent)" : "var(--text-secondary)",
-              background: active ? "var(--accent-dim)" : "transparent",
-              border: active ? "1px solid var(--accent-glow)" : "1px solid transparent",
+              color: active ? "white" : "rgba(255,255,255,0.6)",
+              background: active ? "rgba(124,92,252,0.15)" : "transparent",
+              border: active ? "1px solid rgba(124,92,252,0.25)" : "1px solid transparent",
               cursor: "pointer", textDecoration: "none", transition: "all 0.15s",
               letterSpacing: "-0.01em",
             }}>{link.label}</Link>

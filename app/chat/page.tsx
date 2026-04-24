@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { usePathname } from "next/navigation";
 
 /* ── Types ──────────────────────────────────────────────── */
 type Role = "user" | "assistant";
@@ -35,11 +36,11 @@ type EmailCard = {
 
 /* ── Tool labels ──────────────────────────────────────────── */
 const TOOL_LABELS: Record<string, string> = {
-  getUnreadEmails:     "Reading Gmail inbox",
-  getCalendarEvents:   "Checking calendar availability",
+  getUnreadEmails: "Reading Gmail inbox",
+  getCalendarEvents: "Checking calendar availability",
   createCalendarEvent: "Scheduling event",
-  sendEmail:           "Sending confirmation email",
-  markEmailAsRead:     "Marking email as read",
+  sendEmail: "Sending confirmation email",
+  markEmailAsRead: "Marking email as read",
 };
 
 function buildStepsFromToolCalls(toolCalls: { toolName: string }[]): AgentStep[] {
@@ -71,32 +72,32 @@ function IconChat() {
   return (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
-        stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 function IconInbox() {
   return (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-      <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.8"/>
-      <path d="M2 10h20M7 14h.01M12 14h.01M17 14h.01" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+      <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M2 10h20M7 14h.01M12 14h.01M17 14h.01" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }
 function IconMeetings() {
   return (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-      <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8"/>
-      <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+      <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }
 function IconSettings() {
   return (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8"/>
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
-        stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+        stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }
@@ -104,79 +105,79 @@ function IconSend() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
       <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13"
-        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 function IconCal() {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-      <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8"/>
-      <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+      <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }
 function IconClock() {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.8"/>
-      <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }
 function IconMail() {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-      <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.8"/>
-      <path d="M2 7l10 7 10-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+      <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M2 7l10 7 10-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }
 function IconFilter() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 function IconZap() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 function IconSignOut() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-      <polyline points="16 17 21 12 16 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-      <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <polyline points="16 17 21 12 16 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }
 function IconGoogle() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24">
-      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05" />
+      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
     </svg>
   );
 }
 function ArielLogo({ size = 28 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-      <rect width="32" height="32" rx="9" fill="url(#dLogoGrad)"/>
-      <rect x="7" y="7" width="7" height="7" rx="2" fill="white"/>
-      <rect x="18" y="7" width="7" height="7" rx="2" fill="white" fillOpacity="0.45"/>
-      <rect x="7" y="18" width="7" height="7" rx="2" fill="white" fillOpacity="0.45"/>
-      <rect x="18" y="18" width="7" height="7" rx="2" fill="white" fillOpacity="0.8"/>
+      <rect width="32" height="32" rx="9" fill="url(#dLogoGrad)" />
+      <rect x="7" y="7" width="7" height="7" rx="2" fill="white" />
+      <rect x="18" y="7" width="7" height="7" rx="2" fill="white" fillOpacity="0.45" />
+      <rect x="7" y="18" width="7" height="7" rx="2" fill="white" fillOpacity="0.45" />
+      <rect x="18" y="18" width="7" height="7" rx="2" fill="white" fillOpacity="0.8" />
       <defs>
         <linearGradient id="dLogoGrad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#6366f1"/>
-          <stop offset="1" stopColor="#8b5cf6"/>
+          <stop stopColor="#6366f1" />
+          <stop offset="1" stopColor="#8b5cf6" />
         </linearGradient>
       </defs>
     </svg>
@@ -187,9 +188,9 @@ function ArielLogo({ size = 28 }: { size?: number }) {
 function TypingDots() {
   return (
     <div style={{ display: "flex", gap: 4, alignItems: "center", height: 20 }}>
-      <span className="d-dot"/>
-      <span className="d-dot"/>
-      <span className="d-dot"/>
+      <span className="d-dot" />
+      <span className="d-dot" />
+      <span className="d-dot" />
     </div>
   );
 }
@@ -213,9 +214,9 @@ function MessageText({ text }: { text: string }) {
 ═══════════════════════════════════════════════════════════ */
 const NAV_ITEMS = [
   { href: "/chat",     label: "Chat",     icon: <IconChat /> },
-  { href: "/",         label: "Inbox",    icon: <IconInbox /> },
-  { href: "/",         label: "Meetings", icon: <IconMeetings /> },
-  { href: "/settings", label: "Settings", icon: <IconSettings /> },
+  { href: "/inbox",   label: "Inbox",    icon: <IconInbox /> },
+  { href: "/meetings",label: "Meetings", icon: <IconMeetings /> },
+  { href: "/settings",label: "Settings", icon: <IconSettings /> },
 ];
 
 function LeftSidebar({
@@ -231,7 +232,7 @@ function LeftSidebar({
   setProfileOpen: (v: boolean) => void;
   profileRef: React.RefObject<HTMLDivElement | null>;
 }) {
-  const [active] = useState("/chat");
+  const active = usePathname();
 
   return (
     <aside className="d-sidebar">
@@ -298,7 +299,7 @@ function LeftSidebar({
                   <div className="d-pm-name">{session.profile?.name ?? "User"}</div>
                   <div className="d-pm-email">{session.profile?.email ?? ""}</div>
                 </div>
-                <div className="d-pm-divider"/>
+                <div className="d-pm-divider" />
                 <button className="d-pm-item" onClick={onSignOut}>
                   <IconSignOut /> Sign out
                 </button>
@@ -309,7 +310,7 @@ function LeftSidebar({
                   <div className="d-pm-name">Not signed in</div>
                   <div className="d-pm-email">Connect your Google account</div>
                 </div>
-                <div className="d-pm-divider"/>
+                <div className="d-pm-divider" />
                 <a href="/api/auth/login" className="d-pm-item" style={{ textDecoration: "none" }}>
                   <IconGoogle /> Sign in with Google
                 </a>
@@ -342,7 +343,7 @@ function EmptyStateHero({ isSignedIn }: { isSignedIn: boolean }) {
   if (isSignedIn) return null;
   return (
     <div className="d-empty-hero">
-      <div className="d-empty-glow"/>
+      <div className="d-empty-glow" />
       <div className="d-empty-logo-wrap">
         <ArielLogo size={52} />
       </div>
@@ -429,7 +430,7 @@ function ChatArea({
         <div className="d-topbar-title">Chat</div>
         {loading && (
           <div className="d-thinking-pill">
-            <span className="d-thinking-dot"/>
+            <span className="d-thinking-dot" />
             {processingText || "Ariel is thinking…"}
           </div>
         )}
@@ -528,7 +529,7 @@ function ActivityFeed({ steps, loading }: { steps: AgentStep[]; loading: boolean
       <div className="d-panel-header">
         <span className="d-panel-title">Agent Activity</span>
         {loading
-          ? <span className="d-live-badge"><span className="d-live-dot"/>Live</span>
+          ? <span className="d-live-badge"><span className="d-live-dot" />Live</span>
           : steps.length > 0 && <span className="d-count-badge">{steps.length}</span>
         }
       </div>
@@ -536,7 +537,7 @@ function ActivityFeed({ steps, loading }: { steps: AgentStep[]; loading: boolean
         {steps.length === 0 && !loading ? (
           <div className="d-panel-empty">
             <div className="d-panel-empty-icon"><IconZap /></div>
-            <p>Ariel hasn&apos;t processed anything yet.<br/>Connect your inbox to begin.</p>
+            <p>Ariel hasn&apos;t processed anything yet.<br />Connect your inbox to begin.</p>
           </div>
         ) : (
           <div className="d-activity-list">
@@ -665,23 +666,23 @@ function RightPanel({
    MAIN PAGE (DashboardLayout)
 ═══════════════════════════════════════════════════════════ */
 export default function ChatPage() {
-  const [prompt, setPrompt]         = useState("");
-  const [loading, setLoading]       = useState(false);
-  const [messages, setMessages]     = useState<Message[]>([]);
-  const [steps, setSteps]           = useState<AgentStep[]>([]);
-  const [meetings, setMeetings]     = useState<MeetingCard[]>([]);
-  const [emails, setEmails]         = useState<EmailCard[]>([]);
+  const [prompt, setPrompt] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [steps, setSteps] = useState<AgentStep[]>([]);
+  const [meetings, setMeetings] = useState<MeetingCard[]>([]);
+  const [emails, setEmails] = useState<EmailCard[]>([]);
   const [processingText, setProcessingText] = useState("");
-  const [profileOpen, setProfileOpen]       = useState(false);
-  const [session, setSession]               = useState<{
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [session, setSession] = useState<{
     loggedIn: boolean;
     profile?: { name?: string; email?: string; picture?: string } | null;
   }>({ loggedIn: false });
 
-  const historyRef  = useRef<ApiMessage[]>([]);
-  const bottomRef   = useRef<HTMLDivElement>(null);
+  const historyRef = useRef<ApiMessage[]>([]);
+  const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const profileRef  = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   /* Fetch session */
   useEffect(() => {

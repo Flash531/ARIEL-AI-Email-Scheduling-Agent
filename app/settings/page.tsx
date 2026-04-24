@@ -24,20 +24,21 @@ const TIMEZONES = [
 ];
 
 const MODELS = [
-  { value: "gpt-4o-mini", label: "GPT-4o mini  —  Fast & affordable" },
-  { value: "gpt-4o",      label: "GPT-4o  —  Most capable" },
+  { value: "gpt-4o-mini", label: "GPT-4o mini" },
+  { value: "gpt-4o",      label: "GPT-4o" },
 ];
 
 function SectionCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
     <div style={{
-      background: "var(--surface-2)", border: "1px solid var(--border-mid)",
+      background: "#131729",
+      border: "1px solid rgba(255,255,255,0.07)",
+      borderTop: "1px solid rgba(124,92,252,0.15)",
       borderRadius: 14, padding: "20px 22px", display: "flex", flexDirection: "column", gap: 18,
-      boxShadow: "0 2px 12px rgba(0,0,0,0.02)",
     }}>
       <div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>{title}</div>
-        {subtitle && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>{subtitle}</div>}
+        <div style={{ fontSize: 14, fontWeight: 600, color: "#f1f5f9", letterSpacing: "-0.02em" }}>{title}</div>
+        {subtitle && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 3 }}>{subtitle}</div>}
       </div>
       {children}
     </div>
@@ -48,8 +49,8 @@ function FieldRow({ label, hint, children }: { label: string; hint?: string; chi
   return (
     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>{label}</div>
-        {hint && <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 2, lineHeight: 1.5 }}>{hint}</div>}
+        <div style={{ fontSize: 13, fontWeight: 500, color: "#f1f5f9", letterSpacing: "-0.01em" }}>{label}</div>
+        {hint && <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.5)", marginTop: 2, lineHeight: 1.5 }}>{hint}</div>}
       </div>
       <div style={{ flexShrink: 0 }}>{children}</div>
     </div>
@@ -60,13 +61,16 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
   return (
     <button onClick={() => onChange(!checked)} style={{
       width: 40, height: 22, borderRadius: 11, border: "none", cursor: "pointer",
-      background: checked ? "var(--accent)" : "var(--surface-3)",
-      position: "relative", transition: "background 0.2s", flexShrink: 0,
+      background: checked ? "#7c5cfc" : "rgba(255,255,255,0.1)",
+      position: "relative",
+      transition: "background 0.2s ease, box-shadow 0.2s ease",
+      flexShrink: 0,
+      boxShadow: checked ? "0 0 8px rgba(124,92,252,0.5)" : "none",
     }}>
       <span style={{
         position: "absolute", top: 3, left: checked ? 21 : 3, width: 16, height: 16,
-        borderRadius: "50%", background: "white", transition: "left 0.2s",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.2)",
+        borderRadius: "50%", background: "white", transition: "left 0.2s ease",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
       }} />
     </button>
   );
@@ -112,33 +116,33 @@ export default function SettingsPage() {
   };
 
   const inputStyle: React.CSSProperties = {
-    padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border-mid)",
-    background: "var(--surface)", color: "var(--text-primary)", fontSize: 13,
+    padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)",
+    background: "#0f1324", color: "#f1f5f9", fontSize: 13,
     fontFamily: "inherit", outline: "none", width: 220, letterSpacing: "-0.01em",
   };
 
   if (loading) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", height: "100dvh", fontFamily: "var(--font-inter)" }}>
+      <div style={{ display: "flex", flexDirection: "column", height: "100dvh", fontFamily: "var(--font-inter)", background: "#0a0d1a" }}>
         <SharedNav />
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Loading settings…</div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Loading settings…</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100dvh", fontFamily: "var(--font-inter)", overflow: "hidden" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100dvh", fontFamily: "var(--font-inter)", overflow: "hidden", background: "#0a0d1a" }}>
       <SharedNav />
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "28px 0" }}>
-        <div style={{ maxWidth: 640, margin: "0 auto", padding: "0 24px", display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "28px 0", background: "#0a0d1a" }}>
+        <div style={{ maxWidth: 640, margin: "0 auto", padding: "0 24px", display: "flex", flexDirection: "column", gap: 20 }}>
 
           {/* Page title */}
           <div style={{ marginBottom: 4 }}>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.04em" }}>Settings</h1>
-            <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>Manage your Ariel preferences and connected accounts.</p>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.04em" }}>Settings</h1>
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>Manage your Ariel preferences and connected accounts.</p>
           </div>
 
           {/* Connected Account */}
@@ -169,11 +173,15 @@ export default function SettingsPage() {
                 }}>Disconnect</a>
               </div>
             ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <p style={{ fontSize: 13, color: "var(--text-muted)", flex: 1 }}>No Google account connected.</p>
-                <a href="/api/auth/login" style={{
-                  padding: "7px 16px", borderRadius: 8, border: "1px solid var(--border-mid)",
-                  background: "var(--surface-3)", color: "var(--text-primary)", fontSize: 13,
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "#f1f5f9", marginBottom: 4 }}>No account connected</div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.55 }}>Connect your Gmail to let Ariel read and act on your emails.</div>
+                </div>
+                <a href="/api/auth/login" className="st-connect-btn" style={{
+                  display: "inline-flex", alignItems: "center", gap: 8, alignSelf: "flex-start",
+                  padding: "9px 20px", borderRadius: 10, border: "none",
+                  background: "#7c5cfc", color: "white", fontSize: 13,
                   fontWeight: 600, textDecoration: "none", letterSpacing: "-0.01em",
                 }}>Connect Google →</a>
               </div>
@@ -184,6 +192,7 @@ export default function SettingsPage() {
           <SectionCard title="AI Preferences" subtitle="Customize how Ariel identifies and represents you.">
             <FieldRow label="Your name" hint="Ariel will address you and sign emails with this name.">
               <input
+                className="st-input"
                 style={inputStyle}
                 value={settings.userName}
                 onChange={(e) => set("userName", e.target.value)}
@@ -192,6 +201,7 @@ export default function SettingsPage() {
             </FieldRow>
             <FieldRow label="Email signature" hint="Appended to every email Ariel sends on your behalf.">
               <input
+                className="st-input"
                 style={inputStyle}
                 value={settings.emailSignature}
                 onChange={(e) => set("emailSignature", e.target.value)}
@@ -199,12 +209,12 @@ export default function SettingsPage() {
               />
             </FieldRow>
             <FieldRow label="AI model" hint="More capable models are slower and cost more.">
-              <select style={{ ...inputStyle, cursor: "pointer" }} value={settings.model} onChange={(e) => set("model", e.target.value)}>
+              <select className="st-input" style={{ ...inputStyle, cursor: "pointer" }} value={settings.model} onChange={(e) => set("model", e.target.value)}>
                 {MODELS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
               </select>
             </FieldRow>
             <FieldRow label="Timezone" hint="Used when scheduling events and parsing meeting times.">
-              <select style={{ ...inputStyle, cursor: "pointer" }} value={settings.timezone} onChange={(e) => set("timezone", e.target.value)}>
+              <select className="st-input" style={{ ...inputStyle, cursor: "pointer" }} value={settings.timezone} onChange={(e) => set("timezone", e.target.value)}>
                 {TIMEZONES.map((tz) => <option key={tz} value={tz}>{tz}</option>)}
               </select>
             </FieldRow>
@@ -225,10 +235,10 @@ export default function SettingsPage() {
             {saved && (
               <span style={{ fontSize: 12.5, color: "var(--green)", fontWeight: 500 }}>✓ Settings saved</span>
             )}
-            <button onClick={handleSave} disabled={saving} style={{
-              padding: "9px 22px", borderRadius: 10, border: "none", background: "var(--accent)",
+            <button onClick={handleSave} disabled={saving} className="st-save-btn" style={{
+              padding: "9px 22px", borderRadius: 10, border: "none", background: "#7c5cfc",
               color: "white", fontSize: 13.5, fontWeight: 600, cursor: saving ? "default" : "pointer",
-              letterSpacing: "-0.01em", opacity: saving ? 0.7 : 1, transition: "opacity 0.15s",
+              letterSpacing: "-0.01em", opacity: saving ? 0.7 : 1,
               fontFamily: "inherit",
             }}>
               {saving ? "Saving…" : "Save settings"}
