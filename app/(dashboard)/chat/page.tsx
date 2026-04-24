@@ -1,38 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import { usePathname } from "next/navigation";
+import { useState, useRef, useEffect } from "react";
+import { useAppStore } from "@/lib/store";
+import type { AgentStep, MeetingCard, EmailCard, Message } from "@/lib/store";
 
-/* ── Types ──────────────────────────────────────────────── */
+/* ── Local types (not in store) ───────────────────────────── */
 type Role = "user" | "assistant";
-type Message = { role: Role; text: string };
 type ApiMessage = { role: Role; content: string };
-
-type AgentStep = {
-  id: number;
-  label: string;
-  status: "done" | "active" | "pending";
-};
-
-type MeetingCard = {
-  id: number;
-  title: string;
-  date: string;
-  time: string;
-  duration: string;
-  attendee: string;
-  platform: string;
-};
-
-type EmailCard = {
-  id: number;
-  sender: string;
-  initials: string;
-  subject: string;
-  snippet: string;
-  time: string;
-  tag: string;
-};
 
 /* ── Tool labels ──────────────────────────────────────────── */
 const TOOL_LABELS: Record<string, string> = {
@@ -209,119 +183,6 @@ function MessageText({ text }: { text: string }) {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════
-   LEFT SIDEBAR
-═══════════════════════════════════════════════════════════ */
-const NAV_ITEMS = [
-  { href: "/chat",     label: "Chat",     icon: <IconChat /> },
-  { href: "/inbox",   label: "Inbox",    icon: <IconInbox /> },
-  { href: "/meetings",label: "Meetings", icon: <IconMeetings /> },
-  { href: "/settings",label: "Settings", icon: <IconSettings /> },
-];
-
-function LeftSidebar({
-  session,
-  onSignOut,
-  profileOpen,
-  setProfileOpen,
-  profileRef,
-}: {
-  session: { loggedIn: boolean; profile?: { name?: string; email?: string; picture?: string } | null };
-  onSignOut: () => void;
-  profileOpen: boolean;
-  setProfileOpen: (v: boolean) => void;
-  profileRef: React.RefObject<HTMLDivElement | null>;
-}) {
-  const active = usePathname();
-
-  return (
-    <aside className="d-sidebar">
-      {/* Logo */}
-      <div className="d-sb-logo">
-        <ArielLogo size={30} />
-        <div>
-          <div className="d-sb-brand">Ariel</div>
-          <div className="d-sb-sub">AI Inbox Assistant</div>
-        </div>
-      </div>
-
-      {/* Nav */}
-      <nav className="d-sb-nav">
-        {NAV_ITEMS.map((item) => (
-          <a
-            key={item.label}
-            href={item.href}
-            className={`d-nav-item ${active === item.href && item.href === "/chat" ? "d-nav-active" : ""}`}
-          >
-            <span className="d-nav-icon">{item.icon}</span>
-            {item.label}
-          </a>
-        ))}
-      </nav>
-
-      {/* Spacer */}
-      <div style={{ flex: 1 }} />
-
-      {/* User */}
-      <div className="d-sb-user" ref={profileRef}>
-        <button
-          className="d-user-btn"
-          onClick={() => setProfileOpen(!profileOpen)}
-          aria-label="Profile"
-        >
-          {session.loggedIn && session.profile?.picture ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={session.profile.picture}
-              alt={session.profile.name ?? "User"}
-              width={32} height={32}
-              style={{ borderRadius: "50%", display: "block" }}
-            />
-          ) : (
-            <div className="d-user-avatar-placeholder">
-              {session.profile?.name?.[0]?.toUpperCase() ?? "U"}
-            </div>
-          )}
-          <div className="d-user-info">
-            <span className="d-user-name">{session.profile?.name ?? (session.loggedIn ? "User" : "Not signed in")}</span>
-            <span className="d-user-status">
-              <span className={`d-status-dot ${session.loggedIn ? "d-status-green" : "d-status-gray"}`} />
-              {session.loggedIn ? "Connected" : "Offline"}
-            </span>
-          </div>
-        </button>
-
-        {profileOpen && (
-          <div className="d-profile-menu">
-            {session.loggedIn ? (
-              <>
-                <div className="d-pm-header">
-                  <div className="d-pm-name">{session.profile?.name ?? "User"}</div>
-                  <div className="d-pm-email">{session.profile?.email ?? ""}</div>
-                </div>
-                <div className="d-pm-divider" />
-                <button className="d-pm-item" onClick={onSignOut}>
-                  <IconSignOut /> Sign out
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="d-pm-header">
-                  <div className="d-pm-name">Not signed in</div>
-                  <div className="d-pm-email">Connect your Google account</div>
-                </div>
-                <div className="d-pm-divider" />
-                <a href="/api/auth/login" className="d-pm-item" style={{ textDecoration: "none" }}>
-                  <IconGoogle /> Sign in with Google
-                </a>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    </aside>
-  );
-}
 
 /* ═══════════════════════════════════════════════════════════
    PREVIEW CARD (pre-auth)
@@ -398,6 +259,7 @@ function ChatArea({
   session,
   textareaRef,
   bottomRef,
+  onClear,
 }: {
   messages: Message[];
   loading: boolean;
@@ -410,6 +272,7 @@ function ChatArea({
   session: { profile?: { name?: string } | null };
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   bottomRef: React.RefObject<HTMLDivElement | null>;
+  onClear: () => void;
 }) {
   const hour = new Date().getHours();
   const tod = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
@@ -428,6 +291,24 @@ function ChatArea({
       {/* Topbar */}
       <div className="d-topbar">
         <div className="d-topbar-title">Chat</div>
+        {messages.length > 0 && (
+          <button
+            onClick={onClear}
+            style={{
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              color: "rgba(255,255,255,0.5)",
+              borderRadius: 6, padding: "4px 12px",
+              fontSize: 12, cursor: "pointer",
+              fontFamily: "inherit",
+              transition: "all 0.15s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.25)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.5)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
+          >
+            Clear chat
+          </button>
+        )}
         {loading && (
           <div className="d-thinking-pill">
             <span className="d-thinking-dot" />
@@ -668,21 +549,26 @@ function RightPanel({
 export default function ChatPage() {
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [steps, setSteps] = useState<AgentStep[]>([]);
-  const [meetings, setMeetings] = useState<MeetingCard[]>([]);
-  const [emails, setEmails] = useState<EmailCard[]>([]);
   const [processingText, setProcessingText] = useState("");
-  const [profileOpen, setProfileOpen] = useState(false);
   const [session, setSession] = useState<{
     loggedIn: boolean;
     profile?: { name?: string; email?: string; picture?: string } | null;
   }>({ loggedIn: false });
 
+  /* Zustand store */
+  const messages          = useAppStore((s) => s.messages);
+  const addMessage        = useAppStore((s) => s.addMessage);
+  const clearMessages     = useAppStore((s) => s.clearMessages);
+  const activityItems     = useAppStore((s) => s.activityItems);
+  const setActivityItems  = useAppStore((s) => s.setActivityItems);
+  const meetings          = useAppStore((s) => s.meetings);
+  const storeMeetings     = useAppStore((s) => s.setMeetings);
+  const emails            = useAppStore((s) => s.emails);
+  const storeEmails       = useAppStore((s) => s.setEmails);
+
   const historyRef = useRef<ApiMessage[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const profileRef = useRef<HTMLDivElement>(null);
 
   /* Fetch session */
   useEffect(() => {
@@ -692,16 +578,6 @@ export default function ChatPage() {
       .catch(() => setSession({ loggedIn: false }));
   }, []);
 
-  /* Close profile dropdown on outside click */
-  useEffect(() => {
-    const h = (e: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
-        setProfileOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
 
   /* Auto-scroll */
   useEffect(() => {
@@ -723,11 +599,6 @@ export default function ChatPage() {
     return () => clearInterval(t);
   }, [loading]);
 
-  const handleSignOut = useCallback(async () => {
-    await fetch("/api/auth/logout");
-    setSession({ loggedIn: false });
-    setProfileOpen(false);
-  }, []);
 
   const isSignedIn = session.loggedIn;
 
@@ -735,10 +606,10 @@ export default function ChatPage() {
     const userText = (overrideText ?? prompt).trim();
     if (!userText || loading) return;
     if (!isSignedIn) {
-      setMessages((p) => [...p, { role: "assistant", text: "Please sign in with Google first." }]);
+      addMessage({ role: "assistant", text: "Please sign in with Google first." });
       return;
     }
-    setMessages((p) => [...p, { role: "user", text: userText }]);
+    addMessage({ role: "user", text: userText });
     setPrompt("");
     setLoading(true);
     if (textareaRef.current) textareaRef.current.style.height = "22px";
@@ -756,7 +627,7 @@ export default function ChatPage() {
       });
       if (res.status === 401) {
         setSession({ loggedIn: false });
-        setMessages((p) => [...p, { role: "assistant", text: "Your session has expired. Please sign in again." }]);
+        addMessage({ role: "assistant", text: "Your session has expired. Please sign in again." });
         setLoading(false);
         return;
       }
@@ -765,16 +636,17 @@ export default function ChatPage() {
         .replace(/\n\n_Tools used:[\s\S]*$/, "").trim() || "Done.";
 
       historyRef.current = [...updatedHistory, { role: "assistant", content: assistantText }];
-      setSteps(buildStepsFromToolCalls(data.toolCalls ?? []));
+      setActivityItems(buildStepsFromToolCalls(data.toolCalls ?? []));
 
-      if (data.emails?.length > 0) setEmails(data.emails);
+      if (data.emails?.length > 0) storeEmails(data.emails);
       if (data.meetings?.length > 0) {
-        setMeetings((prev) => [
+        const merged = [
           ...data.meetings,
-          ...prev.filter((m: MeetingCard) => !data.meetings.find((n: MeetingCard) => n.title === m.title)),
-        ]);
+          ...meetings.filter((m: MeetingCard) => !data.meetings.find((n: MeetingCard) => n.title === m.title)),
+        ];
+        storeMeetings(merged);
       }
-      setMessages((p) => [...p, { role: "assistant", text: assistantText }]);
+      addMessage({ role: "assistant", text: assistantText });
 
       try {
         const entry = {
@@ -790,21 +662,14 @@ export default function ChatPage() {
         localStorage.setItem("ariel_history", JSON.stringify([entry, ...prev].slice(0, 100)));
       } catch { /* ignore */ }
     } catch {
-      setMessages((p) => [...p, { role: "assistant", text: "Something went wrong. Please try again." }]);
+      addMessage({ role: "assistant", text: "Something went wrong. Please try again." });
     }
     setLoading(false);
     setProcessingText("");
   };
 
   return (
-    <div className="d-root">
-      <LeftSidebar
-        session={session}
-        onSignOut={handleSignOut}
-        profileOpen={profileOpen}
-        setProfileOpen={setProfileOpen}
-        profileRef={profileRef}
-      />
+    <>
       <ChatArea
         messages={messages}
         loading={loading}
@@ -817,13 +682,14 @@ export default function ChatPage() {
         session={session}
         textareaRef={textareaRef}
         bottomRef={bottomRef}
+        onClear={clearMessages}
       />
       <RightPanel
-        steps={steps}
+        steps={activityItems}
         meetings={meetings}
         emails={emails}
         loading={loading}
       />
-    </div>
+    </>
   );
 }
