@@ -158,8 +158,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const handleSignOut = useCallback(async () => {
     await fetch("/api/auth/logout");
-    setSession({ loggedIn: false });
-    setProfileOpen(false);
+    window.location.href = "/";
   }, []);
 
   return (

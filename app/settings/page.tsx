@@ -90,6 +90,11 @@ export default function SettingsPage() {
   const [saved, setSaved]     = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const handleDisconnect = async () => {
+    await fetch("/api/auth/logout");
+    window.location.href = "/";
+  };
+
   useEffect(() => {
     Promise.all([
       fetch("/api/settings").then((r) => r.json()),
@@ -165,12 +170,12 @@ export default function SettingsPage() {
                     <span style={{ fontSize: 10.5, fontWeight: 600, color: "var(--green)", background: "var(--green-dim)", borderRadius: 20, padding: "2px 8px" }}>Calendar ✓</span>
                   </div>
                 </div>
-                <a href="/api/auth/logout" style={{
+                <button onClick={handleDisconnect} style={{
                   marginLeft: "auto", padding: "6px 14px", borderRadius: 8,
                   border: "1px solid rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.06)",
-                  color: "#ef4444", fontSize: 12.5, fontWeight: 600, textDecoration: "none",
-                  letterSpacing: "-0.01em",
-                }}>Disconnect</a>
+                  color: "#ef4444", fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+                  letterSpacing: "-0.01em", fontFamily: "inherit",
+                }}>Disconnect</button>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>

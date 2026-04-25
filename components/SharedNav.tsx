@@ -77,8 +77,7 @@ export default function SharedNav() {
 
   const handleSignOut = useCallback(async () => {
     await fetch("/api/auth/logout");
-    setSession({ loggedIn: false });
-    setProfileOpen(false);
+    window.location.href = "/";
   }, []);
 
   const dropdownItemStyle: React.CSSProperties = {

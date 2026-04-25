@@ -21,8 +21,8 @@ export async function GET(req: Request) {
     const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
     const { data: profile } = await oauth2.userinfo.get();
 
-    // Build the redirect response
-    const redirectUrl = new URL("/?auth=success", req.url);
+    // Build the redirect response — send user straight to the dashboard
+    const redirectUrl = new URL("/chat", req.url);
     const res = NextResponse.redirect(redirectUrl);
 
     // Store tokens in an httpOnly cookie (7-day expiry)

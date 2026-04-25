@@ -239,7 +239,7 @@ function WaitlistForm({ id = "waitlist-form" }: { id?: string }) {
           <input
             type="email"
             required
-            placeholder="Enter your work email"
+            placeholder="Enter your work email to join →"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onFocus={() => setFocused(true)}
@@ -252,8 +252,8 @@ function WaitlistForm({ id = "waitlist-form" }: { id?: string }) {
         <button
           type="submit"
           className="lp-btn-primary lp-btn-glow"
-          disabled={status === "loading" || !isValid}
-          style={{ opacity: (status === "loading" || !isValid) ? 0.65 : 1 }}
+          disabled={status === "loading"}
+          style={{ opacity: status === "loading" ? 0.7 : 1 }}
         >
           {status === "loading" ? "Joining…" : <>Join Waitlist <ArrowIcon /></>}
         </button>
