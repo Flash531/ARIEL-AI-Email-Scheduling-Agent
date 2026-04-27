@@ -157,9 +157,11 @@ function LeftSidebar({
 
 /* ── RightPanel (reads from Zustand store) ──────────────── */
 function RightPanel() {
-  const activityItems          = useAppStore((s) => s.activityItems);
-  const scheduledMeetingsCount = useAppStore((s) => s.scheduledMeetingsCount);
-  const emailSummaryCount      = useAppStore((s) => s.emailSummaryCount);
+  const activityItems = useAppStore((s) => s.activityItems);
+  const arielMeetings = useAppStore((s) => s.arielMeetings);
+  const arielEmails   = useAppStore((s) => s.arielEmails);
+  const meetingCount  = arielMeetings.length;
+  const emailCount    = arielEmails.length;
   return (
     <aside className="d-right">
       {/* Agent Activity */}
@@ -193,12 +195,12 @@ function RightPanel() {
       <div className="d-panel d-anim-in" style={{ animationDelay: "150ms" }}>
         <div className="d-panel-header">
           <span className="d-panel-title"><IconCal /> Scheduled Meetings</span>
-          <span className="d-count-badge">{scheduledMeetingsCount}</span>
+          <span className="d-count-badge">{meetingCount}</span>
         </div>
         <div className="d-panel-body">
           <div className="d-panel-empty">
             <div className="d-panel-empty-icon"><IconMeetings /></div>
-            <p>{scheduledMeetingsCount === 0 ? "No meetings scheduled yet" : `${scheduledMeetingsCount} meeting${scheduledMeetingsCount > 1 ? "s" : ""} scheduled`}</p>
+            <p>{meetingCount === 0 ? "No meetings scheduled yet" : `${meetingCount} meeting${meetingCount > 1 ? "s" : ""} scheduled`}</p>
           </div>
         </div>
       </div>
@@ -206,12 +208,12 @@ function RightPanel() {
       <div className="d-panel d-anim-in" style={{ animationDelay: "200ms" }}>
         <div className="d-panel-header">
           <span className="d-panel-title"><IconMail /> Email Summary</span>
-          <span className="d-count-badge">{emailSummaryCount}</span>
+          <span className="d-count-badge">{emailCount}</span>
         </div>
         <div className="d-panel-body">
           <div className="d-panel-empty">
             <div className="d-panel-empty-icon"><IconMail /></div>
-            <p>{emailSummaryCount === 0 ? "Connect inbox to see summaries" : `${emailSummaryCount} email${emailSummaryCount > 1 ? "s" : ""} processed`}</p>
+            <p>{emailCount === 0 ? "Connect inbox to see summaries" : `${emailCount} email${emailCount > 1 ? "s" : ""} processed`}</p>
           </div>
         </div>
       </div>

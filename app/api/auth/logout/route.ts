@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 
 const IS_PROD = process.env.NODE_ENV === "production";
 
-export async function GET() {
-  const res = NextResponse.json({ success: true, message: "Logged out" });
+export async function GET(req: Request) {
+  // Always redirect to "/" — never render raw JSON in the browser
+  const res = NextResponse.redirect(new URL("/", req.url));
 
   const cookieBase = {
     httpOnly: true,

@@ -160,9 +160,11 @@ function LeftSidebar({
 
 /* ── RightPanel (reads from Zustand store) ──────────────── */
 function RightPanel() {
-  const activityItems          = useAppStore((s) => s.activityItems);
-  const scheduledMeetingsCount = useAppStore((s) => s.scheduledMeetingsCount);
-  const emailSummaryCount      = useAppStore((s) => s.emailSummaryCount);
+  const activityItems  = useAppStore((s) => s.activityItems);
+  const arielMeetings  = useAppStore((s) => s.arielMeetings);
+  const arielEmails    = useAppStore((s) => s.arielEmails);
+  const meetingCount   = arielMeetings.length;
+  const emailCount     = arielEmails.length;
   return (
     <aside className="d-right">
       <div className="d-panel d-anim-in" style={{ animationDelay: "100ms" }}>
@@ -174,7 +176,7 @@ function RightPanel() {
           {activityItems.length === 0 ? (
             <div className="d-panel-empty">
               <div className="d-panel-empty-icon"><IconZap /></div>
-              <p>Ariel hasn&apos;t processed anything yet.</p>
+              <p>Ariel hasn&apos;t processed anything yet.<br/>Connect your inbox to begin.</p>
             </div>
           ) : (
             <div className="d-activity-list">
@@ -194,24 +196,24 @@ function RightPanel() {
       <div className="d-panel d-anim-in" style={{ animationDelay: "150ms" }}>
         <div className="d-panel-header">
           <span className="d-panel-title"><IconCal /> Scheduled Meetings</span>
-          <span className="d-count-badge">{scheduledMeetingsCount}</span>
+          <span className="d-count-badge">{meetingCount}</span>
         </div>
         <div className="d-panel-body">
           <div className="d-panel-empty">
-            <div className="d-panel-empty-icon"><IconMeetingsLg /></div>
-            <p>{scheduledMeetingsCount === 0 ? "No meetings scheduled yet" : `${scheduledMeetingsCount} meeting${scheduledMeetingsCount > 1 ? "s" : ""} scheduled`}</p>
+            <div className="d-panel-empty-icon"><IconMeetings /></div>
+            <p>{meetingCount === 0 ? "No meetings scheduled yet" : `${meetingCount} meeting${meetingCount > 1 ? "s" : ""} scheduled`}</p>
           </div>
         </div>
       </div>
       <div className="d-panel d-anim-in" style={{ animationDelay: "200ms" }}>
         <div className="d-panel-header">
           <span className="d-panel-title"><IconMail /> Email Summary</span>
-          <span className="d-count-badge">{emailSummaryCount}</span>
+          <span className="d-count-badge">{emailCount}</span>
         </div>
         <div className="d-panel-body">
           <div className="d-panel-empty">
             <div className="d-panel-empty-icon"><IconMail /></div>
-            <p>{emailSummaryCount === 0 ? "Connect inbox to see summaries" : `${emailSummaryCount} email${emailSummaryCount > 1 ? "s" : ""} processed`}</p>
+            <p>{emailCount === 0 ? "Connect inbox to see summaries" : `${emailCount} email${emailCount > 1 ? "s" : ""} processed`}</p>
           </div>
         </div>
       </div>
@@ -220,7 +222,14 @@ function RightPanel() {
 }
 
 /* ── MeetingCard ────────────────────────────────────────── */
-function MeetingCard({ meeting, delay }: { meeting: MeetingItem; delay: number }) {
+function MeetingCard({
+  meeting, delay, onCancel, onViewDetails,
+}: {
+  meeting: MeetingItem;
+  delay: number;
+  onCancel: () => void;
+  onViewDetails: () => void;
+}) {
   const initials = meeting.attendee.split(" ").map((n) => n[0]).join("");
   return (
     <div className="d-mpc" style={{ animationDelay: `${delay}ms` }}>
@@ -243,8 +252,8 @@ function MeetingCard({ meeting, delay }: { meeting: MeetingItem; delay: number }
         ✦ Scheduled by Ariel
       </div>
       <div className="d-mpc-actions">
-        <button className="d-mpc-btn d-mpc-btn-view">View details</button>
-        <button className="d-mpc-btn d-mpc-btn-cancel">Cancel</button>
+        <button className="d-mpc-btn d-mpc-btn-view" onClick={onViewDetails}>View details</button>
+        <button className="d-mpc-btn d-mpc-btn-cancel" onClick={onCancel}>Cancel</button>
       </div>
     </div>
   );
@@ -263,17 +272,25 @@ const ctaStyle: React.CSSProperties = {
 };
 
 /* ── MeetingsMain ───────────────────────────────────────── */
-function MeetingsMain({ meetings }: { meetings: MeetingItem[] }) {
+function MeetingsMain({
+  meetings, onCancel, onViewDetails,
+}: {
+  meetings: MeetingItem[];
+  onCancel: (index: number) => void;
+  onViewDetails: () => void;
+}) {
   const [filter, setFilter] = useState("all");
 
   const now = new Date();
-  const filtered = meetings.filter((m) => {
-    if (filter === "all") return true;
-    const mDate = new Date(m.date);
-    if (filter === "upcoming") return mDate >= now;
-    if (filter === "past") return mDate < now;
-    return true;
-  });
+  const filtered = meetings
+    .map((m, originalIndex) => ({ ...m, originalIndex }))
+    .filter((m) => {
+      if (filter === "all") return true;
+      const mDate = new Date(m.date);
+      if (filter === "upcoming") return mDate >= now;
+      if (filter === "past") return mDate < now;
+      return true;
+    });
 
   return (
     <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#0a0d1a", minHeight: "calc(100vh - 60px)" }}>
@@ -338,7 +355,15 @@ function MeetingsMain({ meetings }: { meetings: MeetingItem[] }) {
             </div>
           ) : (
             <div className="d-meetings-grid">
-              {filtered.map((m, i) => <MeetingCard key={m.id} meeting={m} delay={i * 60} />)}
+              {filtered.map((m, i) => (
+                <MeetingCard
+                  key={m.id}
+                  meeting={m}
+                  delay={i * 60}
+                  onCancel={() => onCancel(m.originalIndex)}
+                  onViewDetails={onViewDetails}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -350,7 +375,19 @@ function MeetingsMain({ meetings }: { meetings: MeetingItem[] }) {
 
 /* ── PAGE ───────────────────────────────────────────────── */
 export default function MeetingsPage() {
-  const arielMeetings = useAppStore((s) => s.arielMeetings);
+  const arielMeetings    = useAppStore((s) => s.arielMeetings);
+  const setArielMeetings = useAppStore((s) => s.setArielMeetings);
+  const [toast, setToast] = useState("");
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 3000);
+  };
+
+  const cancelMeeting = (id: string) => {
+    setArielMeetings(arielMeetings.filter((m) => m.id !== id));
+    showToast("Meeting cancelled.");
+  };
 
   const meetings: MeetingItem[] = arielMeetings.map((m: ArielMeeting) => ({
     id: parseInt(m.id) || 0,
@@ -366,9 +403,29 @@ export default function MeetingsPage() {
     duration: m.duration,
   }));
 
+  // Pass originalId alongside so cancel can look up by string id
+  const meetingsWithId = arielMeetings.map((m, i) => ({ ...meetings[i], _originalId: m.id }));
+
   return (
     <>
-      <MeetingsMain meetings={meetings} />
+      {/* Toast notification */}
+      {toast && (
+        <div style={{
+          position: "fixed", top: 20, right: 24, zIndex: 9999,
+          background: "#1e2235", border: "1px solid rgba(124,92,252,0.35)",
+          color: "#f1f5f9", fontSize: 13, fontWeight: 500,
+          padding: "10px 18px", borderRadius: 10,
+          boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+          animation: "lpHeroIn 0.2s ease forwards",
+        }}>
+          {toast}
+        </div>
+      )}
+      <MeetingsMain
+        meetings={meetings}
+        onCancel={(idx) => cancelMeeting(meetingsWithId[idx]?._originalId ?? String(meetings[idx].id))}
+        onViewDetails={() => showToast("Meeting details page coming soon.")}
+      />
       <RightPanel />
     </>
   );
